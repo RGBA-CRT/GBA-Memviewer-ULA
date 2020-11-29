@@ -15,6 +15,9 @@ EndFunction
 Function MainWndProc(hWnd As HWND, dwMsg As DWord, wParam As WPARAM, lParam As LPARAM) As DWord
 	' TODO: この位置にウィンドウメッセージを処理するためのコードを記述します。
 
+	If dwMsg=WM_DEVICECHANGE Then
+		ListupDevices()
+	End If
 	' イベントプロシージャの呼び出しを行います。
 	MainWndProc=EventCall_MainWnd(hWnd,dwMsg,wParam,lParam)
 End Function
@@ -23,78 +26,43 @@ End Function
 '-----------------------------------------------------------------------------
 ' ここから下は、イベントプロシージャを記述するための領域になります。
 
+Sub SetControlEnable(en As BOOL)
+	EnableWindow(MWnd( CommandButton1  ),en)
+	EnableWindow(MWnd( CommandButton2  ),en)
+	EnableWindow(MWnd( CommandButton3  ),en)
+	EnableWindow(MWnd( CommandButton4  ),en)
+	EnableWindow(MWnd( CommandButton5  ),en)
+	EnableWindow(MWnd( CommandButton6  ),en)
+	EnableWindow(MWnd( CommandButton7  ),en)
+	EnableWindow(MWnd( CommandButton8  ),en)
+	EnableWindow(MWnd( CommandButton9  ),en)
+	EnableWindow(MWnd( CommandButton10 ),en)
+	EnableWindow(MWnd( CommandButton11 ),en)
+	EnableWindow(MWnd( CommandButton12 ),en)
+	EnableWindow(MWnd( CommandButton18 ),en)
+	EnableWindow(MWnd( ComboBox1 ),en)
+	EnableWindow(MWnd( EDIT_DUMP ),en)
+	EnableWindow(MWnd( AddressBox ),en)
+	EnableWindow(MWnd( Static1 ),en)
+End Sub
+
 Sub SetWindowEnable(Code AS Byte)
 	Select Case Code
 		Case WE_ALLEN
-			EnableWindow(MWnd( CommandButton1  ),TRUE)
-			EnableWindow(MWnd( CommandButton2  ),TRUE)
-			EnableWindow(MWnd( CommandButton3  ),TRUE)
-			EnableWindow(MWnd( CommandButton4  ),TRUE)
-			EnableWindow(MWnd( CommandButton5  ),TRUE)
-			EnableWindow(MWnd( CommandButton6  ),TRUE)
-			EnableWindow(MWnd( CommandButton7  ),TRUE)
-			EnableWindow(MWnd( CommandButton8  ),TRUE)
-			EnableWindow(MWnd( CommandButton9  ),TRUE)
-			EnableWindow(MWnd( CommandButton10 ),TRUE)
-			EnableWindow(MWnd( CommandButton11 ),TRUE)
-			EnableWindow(MWnd( CommandButton12 ),TRUE)
-			EnableWindow(MWnd( EDIT_DUMP ),TRUE)
-			EnableWindow(MWnd( AddressBox ),TRUE)
-			EnableWindow(MWnd( Static1 ),TRUE)
+			SetControlEnable(TRUE)
 		Case WE_NOCONNECT
 			'初期状態（接続ボタン以外OFF）
+			SetControlEnable(FALSE)
 			EnableWindow(MWnd( CommandButton1  ),TRUE)
-			EnableWindow(MWnd( CommandButton2  ),FALSE)
-			EnableWindow(MWnd( CommandButton3  ),FALSE)
-			EnableWindow(MWnd( CommandButton4  ),FALSE)
-			EnableWindow(MWnd( CommandButton5  ),FALSE)
-			EnableWindow(MWnd( CommandButton6  ),FALSE)
-			EnableWindow(MWnd( CommandButton7  ),FALSE)
-			EnableWindow(MWnd( CommandButton8  ),FALSE)
-			EnableWindow(MWnd( CommandButton9  ),FALSE)
-			EnableWindow(MWnd( CommandButton10 ),FALSE)
-			EnableWindow(MWnd( CommandButton11 ),FALSE)
-			EnableWindow(MWnd( CommandButton12 ),FALSE)
-			EnableWindow(MWnd( EDIT_DUMP ),FALSE)
-			EnableWindow(MWnd( AddressBox ),FALSE)
-			EnableWindow(MWnd( Static1 ),FALSE)
-			EnableWindow(MWnd( AddressBox ),FALSE)
+			EnableWindow(MWnd( CommandButton18  ),TRUE)
+			EnableWindow(MWnd( ComboBox1  ),TRUE)
 		Case WE_WORKING
 			'通信中
-			EnableWindow(MWnd( CommandButton1  ),FALSE)
-			EnableWindow(MWnd( CommandButton2  ),FALSE)
-			EnableWindow(MWnd( CommandButton3  ),FALSE)
-			EnableWindow(MWnd( CommandButton4  ),FALSE)
-			EnableWindow(MWnd( CommandButton5  ),FALSE)
-			EnableWindow(MWnd( CommandButton6  ),FALSE)
-			EnableWindow(MWnd( CommandButton7  ),FALSE)
-			EnableWindow(MWnd( CommandButton8  ),FALSE)
-			EnableWindow(MWnd( CommandButton9  ),FALSE)
-			EnableWindow(MWnd( CommandButton10 ),FALSE)
-			EnableWindow(MWnd( CommandButton11 ),FALSE)
-			EnableWindow(MWnd( CommandButton12 ),FALSE)
-			EnableWindow(MWnd( EDIT_DUMP ),FALSE)
-			EnableWindow(MWnd( AddressBox ),FALSE)
-			EnableWindow(MWnd( Static1 ),FALSE)
-			EnableWindow(MWnd( AddressBox ),FALSE)
+			SetControlEnable(FALSE)
 		Case WE_READY
 			'操作待ち
+			SetControlEnable(TRUE)
 			EnableWindow(MWnd( CommandButton1  ),FALSE)
-			EnableWindow(MWnd( CommandButton2  ),TRUE)
-			EnableWindow(MWnd( CommandButton3  ),TRUE)
-			EnableWindow(MWnd( CommandButton4  ),TRUE)
-			EnableWindow(MWnd( CommandButton5  ),TRUE)
-			EnableWindow(MWnd( CommandButton6  ),TRUE)
-			EnableWindow(MWnd( CommandButton7  ),TRUE)
-			EnableWindow(MWnd( CommandButton8  ),TRUE)
-			EnableWindow(MWnd( CommandButton9  ),TRUE)
-			EnableWindow(MWnd( CommandButton10 ),TRUE)
-			EnableWindow(MWnd( CommandButton11 ),TRUE)
-			EnableWindow(MWnd( CommandButton12 ),TRUE)
-			EnableWindow(MWnd( EDIT_DUMP ),TRUE)
-			EnableWindow(MWnd( AddressBox ),TRUE)
-			EnableWindow(MWnd( Static1 ),TRUE)
-			EnableWindow(MWnd( EDIT_DUMP ),TRUE)
 	EndSelect
 EndSub
 Sub DoWork(Text AS BytePtr)
@@ -126,6 +94,7 @@ Sub MainWnd_Create(ByRef CreateStruct As CREATESTRUCT)
 	hFont=CreateFont(-12,0,0,0,400,0,0,0,SHIFTJIS_CHARSET,OUT_RASTER_PRECIS,0,DEFAULT_QUALITY,FIXED_PITCH,"ＭＳ ゴシック") As DWord
     SendMessage(MWnd(EDIT_DUMP),WM_SETFONT,hFont,TRUE)
     SendMessage(MWnd(AddressBox),WM_SETFONT,hFont,TRUE)
+    SendMessage(MWnd(Static4),WM_SETFONT,hFont,TRUE)
 	SendMessage(MWnd(AddressBox),CB_ADDSTRING,0,"[BIOS]0x00000000" As Long)
 	SendMessage(MWnd(AddressBox),CB_ADDSTRING,0,"[WRAM]0x02000000" As Long)
 	SendMessage(MWnd(AddressBox),CB_ADDSTRING,0,"[IRAM]0x03000000" As Long)
@@ -140,8 +109,36 @@ Sub MainWnd_Create(ByRef CreateStruct As CREATESTRUCT)
 	SendMessage(MWnd(AddressBox),CB_ADDSTRING,0,"[SRAM]0x0E000000" As Long)
 	SendMessage(MWnd(AddressBox),CB_SETCURSEL,7,0)
 	SetWindowEnable(WE_NOCONNECT)
+	ListupDevices()
 End Sub
 
+Sub ListUpComPort_Callback(userdata AS VoidPtr, PortName As BytePtr, FriendlyName AS BytePtr)
+	Dim vid As Word, pid AS Word
+	ParseUsbDeviceId(PortName,15,VarPtr(vid),VarPtr(pid))
+
+	Dim buf[1024] AS Byte
+	wsprintf(buf, ex"[%04x:%04x] %s (%s)\n", vid,pid,FriendlyName, PortName)
+	
+	Dim idx As Long
+	idx = SendMessage(MWnd(ComboBox1),CB_ADDSTRING,0,buf As Long)
+	SendMessage(MWnd(ComboBox1),CB_SETITEMDATA,idx,vid<<16 OR pid)
+End Sub
+
+
+Sub ListupDevices()
+	SendMessage(MWnd(ComboBox1),CB_RESETCONTENT,0,0)
+
+	
+	' デバイス名付きリストアップを試す(Win2K以降)
+	Dim sa AS SetupApiWrapper, failed AS BOOL
+	if sa.Load() Then
+		if EnumUsbDevices(VarPtr(sa), AddressOf(ListUpComPort_Callback), 0) = FALSE Then failed=TRUE
+	Else
+		failed=TRUE
+	Endif
+
+	SendMessage(MWnd(ComboBox1),CB_SETCURSEL,0,0)
+End Sub
 
 Sub MainWnd_CommandButton8_Click()
 	ErrMes(hMainWnd,"未実装です！！！！！！！！！！！！","申し訳ない",0)
@@ -179,10 +176,22 @@ Sub DBM(Text AS BytePtr)
 	Print MakeStr(Text)
 EndSub
 
+
+Function GetCheckBox(hWnd AS DWord, Ctrl As Long) As Byte
+	if SendMessage(GetDlgItem(hWnd, Ctrl), BM_GETCHECK, 0, 0) = BST_CHECKED then
+		GetCheckBox=TRUE
+	Else
+		GetCheckBox=FALSE
+	endif
+endfunction
+
 Sub MainWnd_CommandButton1_Click()
+	Dim vid AS Word, pid As Word
+	GetDeviceVidPid(VarPtr(vid), VarPtr(pid))
+
 	DBM("Connection to GBA...")
 	SetWindowEnable(WE_WORKING)
-	if ConnectToGBA()<>0 Then 
+	if ConnectToGBA( vid, pid )<>0 Then 
 		DBM("Connect to GBA is failed!!!")
 		'ErrMes(hMainWnd,"GBAとの接続に失敗しました。","ULA接続エラー",0)
 		SetWindowEnable(WE_NOCONNECT)
@@ -288,4 +297,25 @@ Sub MainWnd_CommandButton6_Click()
 	'プログレスバー、中止キー
 	'スイッチ切り替え支持
 	WriteDSExRAM("MDM.gba")	
+End Sub
+
+Sub GetDeviceVidPid(vid As *Word, pid As *Word)
+	Dim idx As Long, cb_userdata As DWord
+	idx=SendMessage(MWnd(ComboBox1),CB_GETCURSEL,0,0)
+
+	cb_userdata = SendMessage(MWnd(ComboBox1),CB_GETITEMDATA,idx,0)
+	SetWord(vid, cb_userdata>>16)
+	SetWord(pid, cb_userdata And &HFFFF)
+End Sub
+
+Sub MainWnd_CommandButton18_Click()
+	Dim vid AS Word, pid As Word
+	GetDeviceVidPid(VarPtr(vid), VarPtr(pid))
+
+	'EZ-USB制御ファームを送信
+	if ulaFirmDownload(vid, pid,"gba_boot.bix")=FALSE Then ExitSub
+	Print "gba_boot.bix OK"
+	Sleep(WAIT_FOR_COMMAND)
+
+	
 End Sub

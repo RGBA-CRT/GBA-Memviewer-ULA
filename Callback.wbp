@@ -6,34 +6,34 @@ Const GroupBox2=1002
 Const EDIT_DUMP=1003
 Const CommandButton1=1004
 Const GroupBox3=1005
-Const Static3=1006
-Const DBM=1007
-Const CommandButton2=1008
-Const CommandButton3=1009
-Const Static1=1010
-Const AddressBox=1011
-Const CommandButton4=1012
-Const CommandButton5=1013
-Const CommandButton6=1014
-Const CommandButton7=1015
-Const CommandButton8=1016
-Const CommandButton9=1017
-Const CommandButton10=1018
-Const hProg=1019
-Const CommandButton11=1020
-Const CommandButton13=1021
-Const CommandButton12=1022
-Const Static4=1023
-Const CommandButton14=1024
-Const CommandButton15=1025
-Const CommandButton16=1026
-Const CommandButton17=1027
-Const EditBox1=1028
-Const RadioButton1=1029
-Const RadioButton2=1030
-Const RadioButton3=1031
-Const RadioButton4=1032
-Const ComboBox1=1033
+Const DBM=1006
+Const CommandButton2=1007
+Const CommandButton3=1008
+Const Static1=1009
+Const AddressBox=1010
+Const CommandButton4=1011
+Const CommandButton5=1012
+Const CommandButton6=1013
+Const CommandButton7=1014
+Const CommandButton8=1015
+Const CommandButton9=1016
+Const CommandButton10=1017
+Const hProg=1018
+Const CommandButton11=1019
+Const CommandButton13=1020
+Const CommandButton12=1021
+Const Static4=1022
+Const CommandButton14=1023
+Const CommandButton15=1024
+Const CommandButton16=1025
+Const CommandButton17=1026
+Const ComboBox1=1027
+Const CommandButton18=1028
+Const EditBox1=1029
+Const RadioButton1=1030
+Const RadioButton2=1031
+Const RadioButton3=1032
+Const RadioButton4=1033
 Const EditBox2=1034
 Const EditBox3=1035
 Const EditBox4=1036
@@ -77,8 +77,6 @@ Function EventCall_MainWnd(hWnd As HWND, message As DWord, wParam As WPARAM, lPa
 			SendMessage(GetDlgItem(hWnd,CommandButton1),WM_SETFONT,hFont_MainWnd As WPARAM,0)
 			CreateWindowEx(&H00000000,"BUTTON","Command",&H50000007,522,22,85,372,hWnd,GroupBox3 As HMENU,GetModuleHandle(0),0)
 			SendMessage(GetDlgItem(hWnd,GroupBox3),WM_SETFONT,hFont_MainWnd As WPARAM,0)
-			CreateWindowEx(&H00000000,"STATIC","Referenced from ULA HostV2",&H58000000,449,5,159,12,hWnd,Static3 As HMENU,GetModuleHandle(0),0)
-			SendMessage(GetDlgItem(hWnd,Static3),WM_SETFONT,hFont_MainWnd As WPARAM,0)
 			CreateWindowEx(&H00000200,"EDIT","GBA connection is deactive",&H50000801,20,38,483,18,hWnd,DBM As HMENU,GetModuleHandle(0),0)
 			SendMessage(GetDlgItem(hWnd,DBM),WM_SETFONT,hFont_MainWnd As WPARAM,0)
 			CreateWindowEx(&H00000000,"BUTTON","Get Cart Info",&H50002000,529,78,70,34,hWnd,CommandButton2 As HMENU,GetModuleHandle(0),0)
@@ -121,6 +119,10 @@ Function EventCall_MainWnd(hWnd As HWND, message As DWord, wParam As WPARAM, lPa
 			SendMessage(GetDlgItem(hWnd,CommandButton16),WM_SETFONT,hFont_MainWnd As WPARAM,0)
 			CreateWindowEx(&H00000000,"BUTTON","D",&H50000000,554,397,13,16,hWnd,CommandButton17 As HMENU,GetModuleHandle(0),0)
 			SendMessage(GetDlgItem(hWnd,CommandButton17),WM_SETFONT,hFont_MainWnd As WPARAM,0)
+			CreateWindowEx(&H00000000,"COMBOBOX","",&H50200142,277,1,300,84,hWnd,ComboBox1 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,ComboBox1),WM_SETFONT,hFont_MainWnd As WPARAM,0)
+			CreateWindowEx(&H00000000,"BUTTON","FWDL",&H50000000,579,0,36,19,hWnd,CommandButton18 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,CommandButton18),WM_SETFONT,hFont_MainWnd As WPARAM,0)
 			MainWnd_Create(ByVal (lParam As VoidPtr))
 		Case WM_CHAR
 			MainWnd_KeyPress(wParam As Long,lParam As Long)
@@ -213,6 +215,11 @@ Function EventCall_MainWnd(hWnd As HWND, message As DWord, wParam As WPARAM, lPa
 					Select Case HIWORD(wParam)
 						Case BN_CLICKED
 							MainWnd_CommandButton6_Click()
+					End Select
+				Case CommandButton18
+					Select Case HIWORD(wParam)
+						Case BN_CLICKED
+							MainWnd_CommandButton18_Click()
 					End Select
 			End Select
 		Case Else

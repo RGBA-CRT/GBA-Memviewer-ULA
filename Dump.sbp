@@ -92,7 +92,7 @@ Sub Dump_CommandButton3_Click()
 End Sub
 
 Sub DumpCallback(di AS *THREAD_VALUES)
-	Dim per AS Byte
+	Dim per AS DWord
 	if di->CallBackTemp=0 Then
 		'‰‰ñ“®ì
 		SetWindowEnable(WE_WORKING)
@@ -120,10 +120,10 @@ Sub DumpCallback(di AS *THREAD_VALUES)
 		endif
 		SendMessage( MWnd(hProg), PBM_SETPOS, 0, 0 )
 	endif
-	per=( (di->Size - di->least) / di->Size * 100) AS Byte
+	per=( (di->Size - di->least) / di->Size * 10000) As DWord
 	if per<>di->PerCent then
-		Dim txt[6] As Byte
-		wsprintf(txt,"%3d%%",per)
+		Dim txt[128] As Byte
+		wsprintf(txt,"%08X/%08X %3d.%02d%%",di->Size - di->least,di->Size,per/100,per Mod 100)
 		SetWindowText(MWnd(Static4),txt)
 		di->PerCent=per
 	endif
@@ -139,7 +139,7 @@ Type THREAD_VALUES
 	hFile AS HANDLE
 	ExitCode AS Byte
 	ExitFlag AS Byte
-	PerCent AS Byte
+	PerCent AS DWord
 	CallBack AS *Sub(status As *THREAD_VALUES)
 	CallBackTemp AS Byte
 EndType

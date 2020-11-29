@@ -77,7 +77,16 @@ Const LATEST_FIRMZ		= 0
 Const EMBEDDED_FIRMZ	= 0
 
 
-Declare Function DeviceIoControl Lib "kernel32" ( hDevice As HANDLE, dwIoControlCode As DWord,lpInBuffer As VoidPtr, nInBufferSize As Long,lpOutBuffer As VoidPtr, nOutBufferSize As DWord, lpBytesReturned As DWordPtr, pOverlapped As VoidPtr) As Byte
+'Declare Function DeviceIoControl Lib "kernel32" ( hDevice As HANDLE, dwIoControlCode As DWord,lpInBuffer As VoidPtr, nInBufferSize As Long,lpOutBuffer As VoidPtr, nOutBufferSize As DWord, lpBytesReturned As DWordPtr, pOverlapped As VoidPtr) As Byte
+Declare Function ula_open Lib "ula_driver" (device As *HANDLE, vid AS Word, pid As Word) As BOOL
+Declare Function ula_close Lib "ula_driver" (device As HANDLE) As BOOL
+Declare Function ula_ezusb_firmware_download Lib "ula_driver" (vid As Word, pid As Word, fw As BytePtr, len AS DWord) As BOOL
+Declare Function ula_send_command Lib "ula_driver" (device As HANDLE,aCmd As Byte, aP1  As DWord, aP2 As DWord,  aP3 As DWord) As BOOL
+Declare Function ula_gba_init Lib "ula_driver" (device As HANDLE) As BOOL
+Declare Function ula_gba_firmware_download Lib "ula_driver" (device As HANDLE, fw As BytePtr, len AS DWord) As BOOL
+Declare Function ula_data_out Lib "ula_driver" (device As HANDLE, data As BytePtr, len AS DWord) As BOOL
+Declare Function ula_data_in Lib "ula_driver" (device As HANDLE, data As BytePtr, len AS DWord, readsize As *DWord) As BOOL
+
 
 Type VENDOR_REQUEST_IN 
 	bRequest As Byte
@@ -112,51 +121,15 @@ End Type
 
 Const BUF_SIZE=1024
 Dim m_u8ULABuffer[BUF_SIZE] AS Byte
-Dim m_hULA AS HANDLE
+Dim ula_handle AS HANDLE
 Dim m_nbyte As DWord
 Dim m_ret AS Byte
 Dim m_bulkControl As BULK_TRANSFER_CONTROL
 'Const IOCTL_EZUSB_BULK_WRITE=222051
 
-Const IOCTL_Ezusb_GET_STRING_DESCRIPTOR 	 = &H222044
-Const IOCTL_Ezusb_ANCHOR_DOWNLOAD 	 = &H22201c
-Const IOCTL_Ezusb_VENDOR_REQUEST 	 = &H222014
-Const IOCTL_EZUSB_BULK_WRITE 	 = &H222051
-Const IOCTL_EZUSB_BULK_READ 	 = &H22204e
-Const IOCTL_Ezusb_RESETPIPE 	 = &H222035
-
-Function DeviceIoControlM( hDevice As HANDLE, dwIoControlCode As DWord,lpInBuffer As VoidPtr, nInBufferSize As Long,lpOutBuffer As VoidPtr, nOutBufferSize As DWord, lpBytesReturned As DWord, lpOverlapped As VoidPtr) As Byte
-	Dim buf[2014] As Byte
-	wsprintf(buf, ex"\nDeviceIoControl {\n\thDevice : %d\n\tdwIoControlCode : %d\n\tlpInBuffer : &H%X\n\tnInBufferSize : %d\n\tlpOutBuffer : &H%X\n\tnOutBufferSize : %d\n\tlpBytesReturned : &H%X\n\tlpOverlapped : &H%X\n}\n\n", hDevice, dwIoControlCode, lpInBuffer, nInBufferSize, lpOutBuffer, nOutBufferSize, lpBytesReturned, lpOverlapped)
-	Print MakeStr(buf)
-	DeviceIoControlM= DeviceIoControl(hDevice, dwIoControlCode, lpInBuffer, nInBufferSize, lpOutBuffer, nOutBufferSize, lpBytesReturned, lpOverlapped)
-Endfunction
 
 Function ulaSetCommand(aCmd As Byte, aP1  As DWord, aP2 As DWord,  aP3 As DWord) AS Long
-	m_u8ULABuffer[ 0] = aCmd
-/*	m_u8ULABuffer[ 1] = (aP1)
-	m_u8ULABuffer[ 2] = (aP1 >>  8)
-	m_u8ULABuffer[ 3] = (aP1 >> 16)
-	m_u8ULABuffer[ 4] = (aP1 >> 24)
-
-	m_u8ULABuffer[ 5] = (aP2)
-	m_u8ULABuffer[ 6] = (aP2 >>  8)
-	m_u8ULABuffer[ 7] = (aP2 >> 16)
-	m_u8ULABuffer[ 8] = (aP2 >> 24)
-
-	m_u8ULABuffer[ 9] = (aP3)
-	m_u8ULABuffer[10] = (aP3 >>  8)
-	m_u8ULABuffer[11] = (aP3 >> 16)
-	m_u8ULABuffer[12] = (aP3 >> 24)*/
-	memcpy(m_u8ULABuffer+1,VarPtr(aP1),4)
-	memcpy(m_u8ULABuffer+5,VarPtr(aP2),4)
-	memcpy(m_u8ULABuffer+9,VarPtr(aP3),4)
-
-	m_ret = FALSE
-	m_bulkControl.pipeNum = BULK_OUT_PIPE
-	'm_ret = DeviceIoControl(m_hULA,	IOCTL_EZUSB_BULK_WRITE,	VarPtr(m_bulkControl),	sizeof(BULK_TRANSFER_CONTROL),	m_u8ULABuffer,	COMMAND_SIZE,m_nbyte,	NULL)
-	m_ret = DeviceIoControl(m_hULA, IOCTL_EZUSB_BULK_WRITE, VarPtr(m_bulkControl), sizeof(BULK_TRANSFER_CONTROL), m_u8ULABuffer, COMMAND_SIZE, VarPtr(m_nbyte), NULL)
-	if m_ret = 0 then
+	if ula_send_command(ula_handle, aCmd, aP1, aP2, aP3) = FALSE then
 		Print "Command Error :";GetLastError()
 		ErrMes(hMainWnd,"通信エラーが発生しました。","USB COMMAND ERROR",0)
 		ulaSetCommand=-1
@@ -166,135 +139,62 @@ Function ulaSetCommand(aCmd As Byte, aP1  As DWord, aP2 As DWord,  aP3 As DWord)
 End Function
 
 Function ulaBulkInData(aData As BytePtr, aDataSize As DWord) As Long
-	m_ret = FALSE
-
-	m_bulkControl.pipeNum = BULK_IN_PIPE
-	m_ret = DeviceIoControl(m_hULA, IOCTL_EZUSB_BULK_READ,  VarPtr(m_bulkControl), sizeof(BULK_TRANSFER_CONTROL), aData,aDataSize,VarPtr(m_nbyte),NULL)
-	if m_ret = FALSE Then
+	if ula_data_in(ula_handle, aData As BytePtr, aDataSize, NULL) =FALSE Then
 		Print "BulkInData Error!"'MessageBox(aMsg, "Project xLA", MB_ICONSTOP)
 		ulaBulkInData=-1
 	Endif
 End Function
 
 Function ulaBulkOutData(aData As BytePtr, aDataSize As DWord) As Long
-	m_ret = FALSE
-
-	m_bulkControl.pipeNum = BULK_OUT_PIPE
-	m_ret = DeviceIoControl(m_hULA,IOCTL_EZUSB_BULK_WRITE,VarPtr(m_bulkControl),sizeof(BULK_TRANSFER_CONTROL),aData,aDataSize,VarPtr(m_nbyte),NULL)
-	if m_ret = FALSE Then
+	if ula_data_out(ula_handle,aData As BytePtr, aDataSize As DWord) = FALSE Then
 		Print "BulkOutData Error : ";GetLastError()'MessageBox(aMsg, "Project xLA", MB_ICONSTOP)
 		ulaBulkOutData=-1
 	Endif
 End Function
 
 'gba_boot.bixの転送？ , フルパス指定城
-Function ulaFirmDownload(FirmFileName AS BytePtr) As Long
+Function ulaFirmDownload(vid As Word, pid As Word, FirmFileName AS BytePtr) As Long
 	' For Firmware
 	Dim fFirmware AS HANDLE
 	Dim firmBuffer As BytePtr
-	Dim hXLA As HANDLE
-	Dim ret AS Byte
-	Dim nbyte AS DWord
-	Dim vreq AS VENDOR_REQUEST_IN
 
-	ret = FALSE
-
-	' xLA Handling
-	hXLA = CreateFile(ex"\\\\.\\ezusb-0",GENERIC_WRITE,FILE_SHARE_WRITE,ByVal NULL,	OPEN_EXISTING,	0,	NULL)
-	if hXLA <> INVALID_HANDLE_VALUE Then
-		DBM("ULA found. wait....")
-		'
-		' Start xLA session
-		'
-
-		'
-		' BixFile Open and Load Binary Image to Internal memory
-		'
-		fFirmware=OpenFile(FirmFileName,GENERIC_READ)
-		if fFirmware=INVALID_HANDLE_VALUE Then
-			ErrMes(hMainWnd,MakeStr(FirmFileName)+"が見つかりません","ULA接続エラー",0)
-			Goto *ERROR
-		Else
-			firmBuffer=calloc(GetFileSize(fFirmware,00))
-			LoadFile(fFirmware,firmBuffer,GetFileSize(fFirmware,00))
-			CloseHandle(fFirmware)
-		Endif
-
-		'
-		' Firmware download
-		'
-		' EZ-USB halt
-		vreq.bRequest = &HA0
-		vreq.wValue = &H7F92
-		vreq.wIndex = &H00
-		vreq.wLength = &H01
-		vreq.bData = 1
-		vreq.direction = &H00
-		ret = DeviceIoControl(hXLA,IOCTL_Ezusb_VENDOR_REQUEST,VarPtr(vreq),sizeof(VENDOR_REQUEST_IN),NULL,0,VarPtr(nbyte),NULL)
-		if ret = FALSE then
-			ErrMes(hMainWnd,"EZ-USB 停止エラー！", "ULA接続エラー", MB_ICONSTOP)
-			free(firmBuffer)
-			Goto *ERROR		
-		Endif
-
-		' EZ-USB firmware download
-		ret = DeviceIoControl(hXLA,IOCTL_Ezusb_ANCHOR_DOWNLOAD,firmBuffer,FIRM_SIZE,NULL,0,VarPtr(nbyte),NULL)
-		if ret = FALSE then
-			ErrMes(hMainWnd,"EZ-USBにファームウェアを書き込めませんでした。", "ULA接続エラー", MB_ICONSTOP)
-			free(firmBuffer)
-			Goto *ERROR
-		Endif
-
-		' EZ-USB Run
-		vreq.bRequest = &HA0
-		vreq.wValue = &H7F92
-		vreq.wIndex = &H00
-		vreq.wLength = &H01
-		vreq.bData = 0
-		vreq.direction = &H00
-		ret = DeviceIoControl(hXLA,IOCTL_Ezusb_VENDOR_REQUEST,VarPtr(vreq),sizeof(VENDOR_REQUEST_IN),NULL,0,VarPtr(nbyte),NULL)
-		if ret = FALSE Then
-			ErrMes(hMainWnd,"EZ-USB　実行エラー","ULA接続エラー",0)
-			Goto *ERROR
-		Endif
-
-		CloseHandle(hXLA)
-		free(firmBuffer)
-	else
-		MessageBox(0,"ULAデバイスが見つかりませんでした。", "ULA接続エラー", MB_ICONSTOP)
-		Goto *ERROR
+	fFirmware=OpenFile(FirmFileName,GENERIC_READ)
+	if fFirmware=INVALID_HANDLE_VALUE Then
+		ErrMes(hMainWnd,MakeStr(FirmFileName)+"が見つかりません","ULA接続エラー",0)
+		ulaFirmDownload=-1
+		ExitFunction
 	Endif
+	
+	firmBuffer=calloc(GetFileSize(fFirmware,00))
+	LoadFile(fFirmware,firmBuffer,GetFileSize(fFirmware,00))
+	
+	if ula_ezusb_firmware_download(vid, pid, firmBuffer,GetFileSize(fFirmware,00) )=FALSE Then
+		ErrMes(hMainWnd,"EZ-USBにファームウェアを書き込めませんでした。", "ULA接続エラー", MB_ICONSTOP)
+	End If
 
-	ExitFunction
-*ERROR
-	if hXLA<>INVALID_HANDLE_VALUE Then CloseHandle(hXLA)
-	ulaFirmDownload=-1
-	ExitFunction
+	free(firmBuffer)
+	CloseHandle(fFirmware)
+	
 EndFunction
 
-Function ulaSilentDownload(TargetFileName AS BytePtr)
-	Dim i AS Long
-	Dim m_fileSize AS Dword
-	Dim m_fh As HANDLE
-	Dim m_bufferCount As Long
+Function ulaSilentDownload(TargetFileName AS BytePtr) As Long
+	Dim infile As File
+	
+	if infile.openFile(TargetFileName, GENERIC_READ)=FALSE Then
+		 Print "TargetFile Not found":ulaSilentDownload=-1:ExitFunction
+	End If
 
+	Dim fw As BytePtr
+	fw=calloc(infile.length())
+	infile.read(fw, infile.length())
 
-	' Get File Size
-	m_fh=OpenFile(TargetFileName,GENERIC_READ)
-	if m_fh=INVALID_HANDLE_VALUE Then Print "TargetFile Not found":ulaSilentDownload=-1:ExitFunction
-	m_fileSize=GetFileSize(m_fh,0)
+	if ula_gba_firmware_download(ula_handle, fw, infile.length())=FALSE Then
+		Print "GBA firmware download failed."
+		ulaSilentDownload=-1
+	End If
 
-	ulaSetCommand(TARGET_DOWNLOAD, &H02010000, m_fileSize, 0)
-	SendMessage(hStartSelect,WM_BOOTING,0,0):	PumpMessage()
-
-	' File Transfer
-	m_bufferCount = (m_fileSize / BUFF_SIZE) AS Long
-	for i=0 To m_bufferCount'(i = 0i <= m_bufferCounti++)
-		LoadFile(m_fh, m_u8ULABuffer, BUFF_SIZE)
-		if ulaBulkOutData( m_u8ULABuffer, BUFF_SIZE) =-1 Then Print "ULA Prog Out error !!":Goto *CLOSE
-	Next i
-*CLOSE
-	CloseHandle(m_fh)
+	infile.close()
+	free(fw)
 End Function
 
 Type GBA_CARTINFO
@@ -336,14 +236,9 @@ Function ulaGetMemoryInfo(info As *GBA_CARTINFO) AS Long
 	ulaGetMemoryInfo=-1
 EndFunction
 
-Function ulaInit() AS Long
-	m_hULA = CreateFile(ex"\\\\.\\ezusb-0",	GENERIC_WRITE,FILE_SHARE_WRITE,ByVal NULL,OPEN_EXISTING,0,NULL)
-	if m_hULA=INVALID_HANDLE_VALUE Then Print "Could not find ULA system !!":ulaInit=-1:ExitFunction
+Function ulaInit(vid As Word, pid As Word) AS Long
+	
 
-	Print "ULA Found."
-
-	'Target Reset
-	if ulaSetCommand(TARGET_INIT, 0, 0, 0)=-1 Then Print "ULA RESET error !!":ulaInit=-1 :ExitFunction
 EndFunction
 
 Const LABEL_BACKUP = 0

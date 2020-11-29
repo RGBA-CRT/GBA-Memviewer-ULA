@@ -1,18 +1,17 @@
 Dim RomInfo AS GBA_HEADER
 
-Function ConnectToGBA() AS Long
-	'EZ-USB制御ファームを送信
-	if ulaFirmDownload("gba_boot.bix")=-1 Then ConnectToGBA=-1:ExitFunction
-	Print "gba_boot.bix OK"
-	Sleep(WAIT_FOR_COMMAND)
-
+Function ConnectToGBA(vid As Word, pid As Word) AS Long
 	'ULAを初期化＆ハンドル取得
-	Print "Initing ULA...";
-	if ulaInit() = -1 Then ConnectToGBA=-2:ExitFunction
+	if ula_open(VarPtr(ula_handle), vid, pid)=FALSE Then Print "Could not find ULA system !!":ConnectToGBA=-1:ExitFunction
+
+	Print "ULA Found."
 
 	'ULAHostV2のGBA制御ROMを転送
 	if SendMessage(hStartSelect,WM_IS_LIFE,0,0)<>1 Then CreateDialog(hMainWnd,"StartSelect"):	PumpMessage()
 	Sleep(WAIT_FOR_COMMAND)
+
+	Print "Initing ULA...";
+	if ula_gba_init(ula_handle)=FALSE Then Print "ULA RESET error !!":ConnectToGBA=-1 :ExitFunction
 
 	Print "Firmware Downloading..."
 	ulaSilentDownload("fwlib20030312.bin")
@@ -22,7 +21,7 @@ Function ConnectToGBA() AS Long
 EndFunction
 
 Sub ExitULA()
-	CloseHandle(m_hULA)
+	ula_close(ula_handle)
 	DBM("GBA connection is closed.")
 	SetWindowEnable(WE_NOCONNECT)
 EndSub

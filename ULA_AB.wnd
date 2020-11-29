@@ -19,7 +19,6 @@ WINDOW:MainWnd
     ITEM      = EDIT_DUMP,20,88,485,306,"",&H502000c4,&H00000200,4
     ITEM      = CommandButton1,529,39,70,34,"Connect to GBA",&H50002000,&H00000000,1
     ITEM      = GroupBox3,522,22,85,372,"Command",&H50000007,&H00000000,5
-    ITEM      = Static3,449,5,159,12,"Referenced from ULA HostV2",&H58000000,&H00000000,11
     ITEM      = DBM,20,38,483,18,"GBA connection is deactive",&H50000801,&H00000200,4
     ITEM      = CommandButton2,529,78,70,34,"Get Cart Info",&H50002000,&H00000000,1
     ITEM      = CommandButton3,529,116,70,34,"Dump ROM",&H50002000,&H00000000,1
@@ -41,6 +40,8 @@ WINDOW:MainWnd
     ITEM      = CommandButton15,571,416,13,16,"3",&H50000000,&H00000000,1
     ITEM      = CommandButton16,589,416,13,16,"4",&H50000000,&H00000000,1
     ITEM      = CommandButton17,554,397,13,16,"D",&H50000000,&H00000000,1
+    ITEM      = ComboBox1,277,1,300,84,"",&H50200142,&H00000000,3
+    ITEM      = CommandButton18,579,0,36,19,"FWDL",&H50000000,&H00000000,1
 END
 WINDOW:Dump
     HANDLE    = hDump

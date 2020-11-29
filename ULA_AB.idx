@@ -13,6 +13,7 @@
 #include "StartSelect.sbp"
 #include "ULA-Lib.abp"
 #include "ULA_Functions.abp"
+#include "usb_enum.abp"
 
 'RADツールが生成するウィンドウ生成プログラム
 #include "MakeWindow.wbp"
