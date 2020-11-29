@@ -1,0 +1,34 @@
+'-----------------------------------------------------------------------------
+'  イベント プロシージャ
+'-----------------------------------------------------------------------------
+' このファイルには、ウィンドウ [StartSelect] に関するイベントをコーディングします。
+' ウィンドウ ハンドル: hStartSelect
+
+' TODO: この位置にグローバルな変数、構造体、定数、関数を定義します。
+
+
+'-----------------------------------------------------------------------------
+' ウィンドウメッセージを処理するためのコールバック関数
+
+Function StartSelectProc(hWnd As HWND, dwMsg As DWord, wParam As WPARAM, lParam As LPARAM) As DWord
+	' TODO: この位置にウィンドウメッセージを処理するためのコードを記述します。
+	if dwMsg=WM_IS_LIFE then 
+		StartSelectProc=1:ExitFunction
+	Elseif dwMsg=WM_BOOTING Then
+		SetWindowText(GetDlgItem(hStartSelect,Static2),"Wait....")
+	endif
+	' イベントプロシージャの呼び出しを行います。
+	StartSelectProc=EventCall_StartSelect(hWnd,dwMsg,wParam,lParam)
+End Function
+
+
+'-----------------------------------------------------------------------------
+' ここから下は、イベントプロシージャを記述するための領域になります。
+
+Sub StartSelect_Create(ByRef CreateStruct As CREATESTRUCT)
+
+End Sub
+
+Sub StartSelect_Static2_Click()
+
+End Sub

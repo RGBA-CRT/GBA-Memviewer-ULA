@@ -1,0 +1,382 @@
+'Ç±ÇÃÉtÉ@ÉCÉãÇÕÉEÉBÉìÉhÉEíËã`ÉtÉ@ÉCÉãÅi*.wndÅjÇÇ‡Ç∆Ç…ê∂ê¨Ç≥ÇÍÇƒÇ¢Ç‹Ç∑
+
+Const Static2=1000
+Const GroupBox1=1001
+Const GroupBox2=1002
+Const EDIT_DUMP=1003
+Const CommandButton1=1004
+Const GroupBox3=1005
+Const Static3=1006
+Const DBM=1007
+Const CommandButton2=1008
+Const CommandButton3=1009
+Const Static1=1010
+Const AddressBox=1011
+Const CommandButton4=1012
+Const CommandButton5=1013
+Const CommandButton6=1014
+Const CommandButton7=1015
+Const CommandButton8=1016
+Const CommandButton9=1017
+Const CommandButton10=1018
+Const hProg=1019
+Const CommandButton11=1020
+Const CommandButton13=1021
+Const CommandButton12=1022
+Const Static4=1023
+Const CommandButton14=1024
+Const CommandButton15=1025
+Const CommandButton16=1026
+Const CommandButton17=1027
+Const EditBox1=1028
+Const RadioButton1=1029
+Const RadioButton2=1030
+Const RadioButton3=1031
+Const RadioButton4=1032
+Const ComboBox1=1033
+Const EditBox2=1034
+Const EditBox3=1035
+Const EditBox4=1036
+Const EditBox5=1037
+
+Dim hMainWnd As HWND
+Dim hFont_MainWnd As HFONT
+hFont_MainWnd=CreateFont(-12,0,0,0,400,0,0,0,128,3,2,1,50,"ÇlÇr ÇoÉSÉVÉbÉN")
+Dim hDump As HWND
+Dim hFont_Dump As HFONT
+hFont_Dump=CreateFont(-12,0,0,0,400,0,0,0,128,3,2,1,32,"ÇlÇr ÇoÉSÉVÉbÉN")
+Dim hStartSelect As HWND
+Dim hFont_StartSelect As HFONT
+hFont_StartSelect=CreateFont(-12,0,0,0,400,0,0,0,128,3,2,1,32,"ÇlÇr ÇoÉSÉVÉbÉN")
+Dim h3DFaceBrush As HBRUSH
+h3DFaceBrush=CreateSolidBrush(GetSysColor(COLOR_3DFACE))
+
+
+Sub ULA_AB_DestroyObjects()
+	DeleteObject(hFont_MainWnd)
+	DeleteObject(hFont_Dump)
+	DeleteObject(hFont_StartSelect)
+	DeleteObject(h3DFaceBrush)
+End Sub
+
+Function EventCall_MainWnd(hWnd As HWND, message As DWord, wParam As WPARAM, lParam As LPARAM) As LRESULT
+	Select Case message
+		Case WM_DESTROY
+			MainWnd_Destroy()
+		Case WM_CREATE
+			hMainWnd=hWnd
+			CreateWindowEx(&H00000000,"STATIC","GBA MemoryViewer with USB Linker Advance",&H50000000,10,5,243,12,hWnd,Static2 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,Static2),WM_SETFONT,hFont_MainWnd As WPARAM,0)
+			CreateWindowEx(&H00000000,"BUTTON","Status",&H50000007,11,21,502,43,hWnd,GroupBox1 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,GroupBox1),WM_SETFONT,hFont_MainWnd As WPARAM,0)
+			CreateWindowEx(&H00000000,"BUTTON","MemoryViewer",&H50000007,11,72,504,355,hWnd,GroupBox2 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,GroupBox2),WM_SETFONT,hFont_MainWnd As WPARAM,0)
+			CreateWindowEx(&H00000200,"EDIT","",&H502000c4,20,88,485,306,hWnd,EDIT_DUMP As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,EDIT_DUMP),WM_SETFONT,hFont_MainWnd As WPARAM,0)
+			CreateWindowEx(&H00000000,"BUTTON","Connect to GBA",&H50002000,529,39,70,34,hWnd,CommandButton1 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,CommandButton1),WM_SETFONT,hFont_MainWnd As WPARAM,0)
+			CreateWindowEx(&H00000000,"BUTTON","Command",&H50000007,522,22,85,372,hWnd,GroupBox3 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,GroupBox3),WM_SETFONT,hFont_MainWnd As WPARAM,0)
+			CreateWindowEx(&H00000000,"STATIC","Referenced from ULA HostV2",&H58000000,449,5,159,12,hWnd,Static3 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,Static3),WM_SETFONT,hFont_MainWnd As WPARAM,0)
+			CreateWindowEx(&H00000200,"EDIT","GBA connection is deactive",&H50000801,20,38,483,18,hWnd,DBM As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,DBM),WM_SETFONT,hFont_MainWnd As WPARAM,0)
+			CreateWindowEx(&H00000000,"BUTTON","Get Cart Info",&H50002000,529,78,70,34,hWnd,CommandButton2 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,CommandButton2),WM_SETFONT,hFont_MainWnd As WPARAM,0)
+			CreateWindowEx(&H00000000,"BUTTON","Dump ROM",&H50002000,529,116,70,34,hWnd,CommandButton3 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,CommandButton3),WM_SETFONT,hFont_MainWnd As WPARAM,0)
+			CreateWindowEx(&H00000000,"STATIC","Address :",&H50000000,283,406,49,12,hWnd,Static1 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,Static1),WM_SETFONT,hFont_MainWnd As WPARAM,0)
+			CreateWindowEx(&H00000000,"COMBOBOX","",&H50200402,338,402,126,152,hWnd,AddressBox As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,AddressBox),WM_SETFONT,hFont_MainWnd As WPARAM,0)
+			CreateWindowEx(&H00000000,"BUTTON","Go",&H50000000,470,399,34,21,hWnd,CommandButton4 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,CommandButton4),WM_SETFONT,hFont_MainWnd As WPARAM,0)
+			CreateWindowEx(&H00000000,"BUTTON","",&H50000000,593,396,14,13,hWnd,CommandButton5 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,CommandButton5),WM_SETFONT,hFont_MainWnd As WPARAM,0)
+			CreateWindowEx(&H00000000,"BUTTON","Write DS MemoryCart",&H50002000,529,315,70,34,hWnd,CommandButton6 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,CommandButton6),WM_SETFONT,hFont_MainWnd As WPARAM,0)
+			CreateWindowEx(&H00000000,"BUTTON","Dump SaveGame",&H50002000,529,156,70,34,hWnd,CommandButton7 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,CommandButton7),WM_SETFONT,hFont_MainWnd As WPARAM,0)
+			CreateWindowEx(&H00000000,"BUTTON","Exec ROM in WRAM",&H50002000,529,195,70,34,hWnd,CommandButton8 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,CommandButton8),WM_SETFONT,hFont_MainWnd As WPARAM,0)
+			CreateWindowEx(&H00000000,"BUTTON","Enable DS ExMem RAM",&H50002000,529,274,70,34,hWnd,CommandButton9 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,CommandButton9),WM_SETFONT,hFont_MainWnd As WPARAM,0)
+			CreateWindowEx(&H00000000,"BUTTON","Boot ROM",&H50002000,528,235,70,34,hWnd,CommandButton10 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,CommandButton10),WM_SETFONT,hFont_MainWnd As WPARAM,0)
+			CreateWindowEx(&H00020000,"msctls_progress32","",&H50000000,22,411,239,9,hWnd,hProg As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,hProg),WM_SETFONT,hFont_MainWnd As WPARAM,0)
+			CreateWindowEx(&H00000000,"BUTTON","r",&H50000000,571,399,17,12,hWnd,CommandButton11 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,CommandButton11),WM_SETFONT,hFont_MainWnd As WPARAM,0)
+			CreateWindowEx(&H00000000,"BUTTON","1",&H50000000,537,416,13,16,hWnd,CommandButton13 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,CommandButton13),WM_SETFONT,hFont_MainWnd As WPARAM,0)
+			CreateWindowEx(&H00000000,"BUTTON","Close Connection",&H50002000,529,354,70,34,hWnd,CommandButton12 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,CommandButton12),WM_SETFONT,hFont_MainWnd As WPARAM,0)
+			CreateWindowEx(&H00000000,"STATIC","100%",&H40000001,24,398,234,10,hWnd,Static4 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,Static4),WM_SETFONT,hFont_MainWnd As WPARAM,0)
+			CreateWindowEx(&H00000000,"BUTTON","2",&H50000000,554,416,13,16,hWnd,CommandButton14 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,CommandButton14),WM_SETFONT,hFont_MainWnd As WPARAM,0)
+			CreateWindowEx(&H00000000,"BUTTON","3",&H50000000,571,416,13,16,hWnd,CommandButton15 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,CommandButton15),WM_SETFONT,hFont_MainWnd As WPARAM,0)
+			CreateWindowEx(&H00000000,"BUTTON","4",&H50000000,589,416,13,16,hWnd,CommandButton16 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,CommandButton16),WM_SETFONT,hFont_MainWnd As WPARAM,0)
+			CreateWindowEx(&H00000000,"BUTTON","D",&H50000000,554,397,13,16,hWnd,CommandButton17 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,CommandButton17),WM_SETFONT,hFont_MainWnd As WPARAM,0)
+			MainWnd_Create(ByVal (lParam As VoidPtr))
+		Case WM_CHAR
+			MainWnd_KeyPress(wParam As Long,lParam As Long)
+		Case WM_CLOSE
+			Dim cancel=0 As Integer
+			If cancel=0 Then DestroyWindow(hWnd)
+		Case WM_COMMAND
+			Select Case LOWORD(wParam)
+				Case CommandButton5
+					Select Case HIWORD(wParam)
+						Case BN_CLICKED
+							MainWnd_CommandButton5_Click()
+					End Select
+				Case CommandButton3
+					Select Case HIWORD(wParam)
+						Case BN_CLICKED
+							MainWnd_CommandButton3_Click()
+					End Select
+				Case CommandButton8
+					Select Case HIWORD(wParam)
+						Case BN_CLICKED
+							MainWnd_CommandButton8_Click()
+					End Select
+				Case CommandButton9
+					Select Case HIWORD(wParam)
+						Case BN_CLICKED
+							MainWnd_CommandButton9_Click()
+					End Select
+				Case CommandButton7
+					Select Case HIWORD(wParam)
+						Case BN_CLICKED
+							MainWnd_CommandButton7_Click()
+					End Select
+				Case CommandButton2
+					Select Case HIWORD(wParam)
+						Case BN_CLICKED
+							MainWnd_CommandButton2_Click()
+					End Select
+				Case CommandButton1
+					Select Case HIWORD(wParam)
+						Case BN_CLICKED
+							MainWnd_CommandButton1_Click()
+					End Select
+				Case CommandButton4
+					Select Case HIWORD(wParam)
+						Case BN_CLICKED
+							MainWnd_CommandButton4_Click()
+					End Select
+				Case CommandButton11
+					Select Case HIWORD(wParam)
+						Case BN_CLICKED
+							MainWnd_CommandButton11_Click()
+					End Select
+				Case CommandButton13
+					Select Case HIWORD(wParam)
+						Case BN_CLICKED
+							MainWnd_CommandButton13_Click()
+					End Select
+				Case CommandButton14
+					Select Case HIWORD(wParam)
+						Case BN_CLICKED
+							MainWnd_CommandButton14_Click()
+					End Select
+				Case CommandButton10
+					Select Case HIWORD(wParam)
+						Case BN_CLICKED
+							MainWnd_CommandButton10_Click()
+					End Select
+				Case CommandButton15
+					Select Case HIWORD(wParam)
+						Case BN_CLICKED
+							MainWnd_CommandButton15_Click()
+					End Select
+				Case CommandButton16
+					Select Case HIWORD(wParam)
+						Case BN_CLICKED
+							MainWnd_CommandButton16_Click()
+					End Select
+				Case EDIT_DUMP
+					Select Case HIWORD(wParam)
+						Case EN_CHANGE
+							MainWnd_EDIT_DUMP_Change()
+					End Select
+				Case CommandButton12
+					Select Case HIWORD(wParam)
+						Case BN_CLICKED
+							MainWnd_CommandButton12_Click()
+					End Select
+				Case CommandButton6
+					Select Case HIWORD(wParam)
+						Case BN_CLICKED
+							MainWnd_CommandButton6_Click()
+					End Select
+			End Select
+		Case Else
+			EventCall_MainWnd=DefWindowProc(hWnd,message,wParam,lParam)
+			Exit Function
+	End Select
+	EventCall_MainWnd=0
+End Function
+
+Function EventCall_Dump(hWnd As HWND, message As DWord, wParam As WPARAM, lParam As LPARAM) As LRESULT
+	Select Case message
+		Case WM_INITDIALOG
+			hDump=hWnd
+			CreateWindowEx(&H00000200,"EDIT","Dump ROM / Write SaveGame",&H50000801,13,10,213,19,hWnd,EditBox1 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,EditBox1),WM_SETFONT,hFont_Dump As WPARAM,0)
+			CreateWindowEx(&H00000000,"BUTTON","Mode",&H50000007,12,34,215,165,hWnd,GroupBox1 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,GroupBox1),WM_SETFONT,hFont_Dump As WPARAM,0)
+			CreateWindowEx(&H00000000,"BUTTON","Automatic Dump/Write",&H50000009,25,51,137,15,hWnd,RadioButton1 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,RadioButton1),WM_SETFONT,hFont_Dump As WPARAM,0)
+			CreateWindowEx(&H00000000,"BUTTON","Header Dump",&H50000009,25,69,89,15,hWnd,RadioButton2 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,RadioButton2),WM_SETFONT,hFont_Dump As WPARAM,0)
+			CreateWindowEx(&H00000000,"BUTTON","Custum Size Dump/Write",&H50000009,25,86,149,15,hWnd,RadioButton3 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,RadioButton3),WM_SETFONT,hFont_Dump As WPARAM,0)
+			CreateWindowEx(&H00000000,"BUTTON","Manual Dump",&H50000009,25,130,118,15,hWnd,RadioButton4 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,RadioButton4),WM_SETFONT,hFont_Dump As WPARAM,0)
+			CreateWindowEx(&H00000000,"COMBOBOX","",&H50200002,148,105,64,174,hWnd,ComboBox1 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,ComboBox1),WM_SETFONT,hFont_Dump As WPARAM,0)
+			CreateWindowEx(&H00000000,"STATIC","Start Offset :",&H50000000,53,150,72,12,hWnd,Static1 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,Static1),WM_SETFONT,hFont_Dump As WPARAM,0)
+			CreateWindowEx(&H00000000,"STATIC","Size[KB] :",&H50000000,55,175,72,12,hWnd,Static2 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,Static2),WM_SETFONT,hFont_Dump As WPARAM,0)
+			CreateWindowEx(&H00000200,"EDIT","0x08000000",&H50000002,130,147,87,17,hWnd,EditBox2 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,EditBox2),WM_SETFONT,hFont_Dump As WPARAM,0)
+			CreateWindowEx(&H00000200,"EDIT","0",&H50000002,130,174,87,17,hWnd,EditBox3 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,EditBox3),WM_SETFONT,hFont_Dump As WPARAM,0)
+			CreateWindowEx(&H00000000,"BUTTON","File",&H50000007,12,201,215,43,hWnd,GroupBox2 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,GroupBox2),WM_SETFONT,hFont_Dump As WPARAM,0)
+			CreateWindowEx(&H00000000,"BUTTON","...",&H50000000,196,215,20,21,hWnd,CommandButton1 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,CommandButton1),WM_SETFONT,hFont_Dump As WPARAM,0)
+			CreateWindowEx(&H00000200,"EDIT","d:\test.gba",&H50000000,21,215,167,21,hWnd,EditBox4 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,EditBox4),WM_SETFONT,hFont_Dump As WPARAM,0)
+			CreateWindowEx(&H00000000,"BUTTON","Cancel",&H50000000,128,252,96,21,hWnd,CommandButton2 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,CommandButton2),WM_SETFONT,hFont_Dump As WPARAM,0)
+			CreateWindowEx(&H00000000,"BUTTON","Start Dump",&H50000000,12,252,93,21,hWnd,CommandButton3 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,CommandButton3),WM_SETFONT,hFont_Dump As WPARAM,0)
+			CreateWindowEx(&H00000200,"EDIT","64",&H50000002,63,105,78,20,hWnd,EditBox5 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,EditBox5),WM_SETFONT,hFont_Dump As WPARAM,0)
+			CreateWindowEx(&H00000000,"BUTTON","",&H40000000,224,268,14,13,hWnd,CommandButton4 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,CommandButton4),WM_SETFONT,hFont_Dump As WPARAM,0)
+			Dump_Create(ByVal (lParam As VoidPtr))
+		Case WM_DESTROY
+		Case WM_CLOSE
+			Dim cancel=0 As Integer
+			If cancel=0 Then EndDialog(hWnd,0)
+		Case WM_COMMAND
+			Select Case LOWORD(wParam)
+				Case CommandButton2
+					Select Case HIWORD(wParam)
+						Case BN_CLICKED
+							Dump_CommandButton2_Click()
+					End Select
+				Case CommandButton1
+					Select Case HIWORD(wParam)
+						Case BN_CLICKED
+							Dump_CommandButton1_Click()
+					End Select
+				Case CommandButton3
+					Select Case HIWORD(wParam)
+						Case BN_CLICKED
+							Dump_CommandButton3_Click()
+					End Select
+				Case CommandButton4
+					Select Case HIWORD(wParam)
+						Case BN_CLICKED
+							Dump_CommandButton4_Click()
+					End Select
+			End Select
+		Case Else
+			EventCall_Dump=DefWindowProc(hWnd,message,wParam,lParam)
+			Exit Function
+	End Select
+	EventCall_Dump=0
+End Function
+
+Function EventCall_StartSelect(hWnd As HWND, message As DWord, wParam As WPARAM, lParam As LPARAM) As LRESULT
+	Select Case message
+		Case WM_INITDIALOG
+			hStartSelect=hWnd
+			CreateWindowEx(&H00000000,"STATIC","Turn ON GBA with START+SELECT",&H50000000,13,16,190,12,hWnd,Static1 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,Static1),WM_SETFONT,hFont_StartSelect As WPARAM,0)
+			CreateWindowEx(&H00000000,"STATIC","",&H50000001,23,37,166,12,hWnd,Static2 As HMENU,GetModuleHandle(0),0)
+			SendMessage(GetDlgItem(hWnd,Static2),WM_SETFONT,hFont_StartSelect As WPARAM,0)
+			StartSelect_Create(ByVal (lParam As VoidPtr))
+		Case WM_DESTROY
+		Case WM_CLOSE
+			Dim cancel=0 As Integer
+			If cancel=0 Then DestroyWindow(hWnd)
+		Case WM_COMMAND
+			Select Case LOWORD(wParam)
+				Case Static2
+					Select Case HIWORD(wParam)
+						Case STN_CLICKED
+							StartSelect_Static2_Click()
+					End Select
+			End Select
+		Case Else
+			EventCall_StartSelect=DefWindowProc(hWnd,message,wParam,lParam)
+			Exit Function
+	End Select
+	EventCall_StartSelect=0
+End Function
+
+Function DefaultCallProc(hWnd As HWND, message As DWord, wParam As WPARAM, lParam As LPARAM) As LRESULT
+	DefaultCallProc=DefWindowProc(hWnd,message,wParam,lParam)
+End Function
+
+Dim _RadSys_dlgwcl As WNDCLASSEX
+FillMemory(VarPtr(_RadSys_dlgwcl),Len(_RadSys_dlgwcl),0)
+_RadSys_dlgwcl.cbSize=Len(_RadSys_dlgwcl)
+_RadSys_dlgwcl.hInstance=GetModuleHandle(0)
+_RadSys_dlgwcl.style=CS_HREDRAW or CS_VREDRAW or CS_DBLCLKS
+_RadSys_dlgwcl.hIcon=LoadIcon(NULL,MAKEINTRESOURCE(IDI_APPLICATION))
+_RadSys_dlgwcl.hIconSm=LoadIcon(NULL,MAKEINTRESOURCE(IDI_WINLOGO))
+_RadSys_dlgwcl.hCursor=LoadCursor(NULL,MAKEINTRESOURCE(IDC_ARROW))
+_RadSys_dlgwcl.lpszClassName="NORMALDLG"
+_RadSys_dlgwcl.hbrBackground=h3DFaceBrush
+_RadSys_dlgwcl.lpfnWndProc=AddressOf(DefaultCallProc)
+RegisterClassEx(_RadSys_dlgwcl)
+
+Function DialogBox(hOwnerWnd As HWND, TemplateName As LPSTR) As LONG_PTR
+	Dim hDlg As HWND
+	If lstrcmp(TemplateName,"Dump")=0 Then
+		hDump=CreateWindowEx(&H00000000,"NORMALDLG","Dump / Write",&H00c80000,-2147483648,-2147483648,244,306,hOwnerWnd,0 As HMENU,GetModuleHandle(0),0)
+		hDlg=hDump
+		SetWindowLong(hDump,GWL_WNDPROC,AddressOf(DumpProc) As LONG_PTR)
+		SendMessage(hDump,WM_INITDIALOG,0,0)
+		SendMessage(hDump,WM_SETICON,ICON_SMALL,LoadIcon(GetModuleHandle(0),MAKEINTRESOURCE(IDI_ICON1)) As LPARAM)
+		ShowWindow(hDump,SW_SHOW)
+	Else
+		Exit Function
+	End If
+	EnableWindow(hOwnerWnd,0)
+
+	Dim msg As MSG, iResult As Long
+	Do
+		iResult=GetMessage(msg,0,0,0)
+		If iResult=0 or iResult=-1 Then Exit Do
+		If IsDialogMessage(hDlg,msg) Then Continue
+		TranslateMessage(msg)
+		DispatchMessage(msg)
+	Loop
+	DialogBox=msg.wParam
+End Function
+Sub EndDialog(hWnd As HWND, lResult As Long)
+	EnableWindow(GetWindow(hWnd,GW_OWNER),1)
+	DestroyWindow(hWnd)
+	PostMessage(0,WM_QUIT,lResult,0)
+End Sub
+
+Function CreateDialog(hOwnerWnd As HWND, TemplateName As LPSTR) As HWND
+	If lstrcmp(TemplateName,"StartSelect")=0 Then
+		hStartSelect=CreateWindowEx(&H0000008c,"NORMALDLG","GBA Memview ULA",&H10c80000,-2147483648,-2147483648,225,81,hOwnerWnd,0 As HMENU,GetModuleHandle(0),0)
+		CreateDialog=hStartSelect
+		SetWindowLong(hStartSelect,GWL_WNDPROC,AddressOf(StartSelectProc) As LONG_PTR)
+		SendMessage(hStartSelect,WM_INITDIALOG,0,0)
+	End If
+End Function

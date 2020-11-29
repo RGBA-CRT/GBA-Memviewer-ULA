@@ -1,0 +1,30 @@
+#include "ULA_AB.idx"
+#include <RGBALib.sbp>
+/*
+Declare Function AllocConsole Lib "kernel32" Alias "AllocConsole" () As Long 
+Declare Function FreeConsole Lib "kernel32" Alias "FreeConsole" () As Long */
+#console
+'---------------------------
+'  Window Message Loop
+'---------------------------
+Dim msgMain As MSG, iResult As Long
+Do
+	iResult=GetMessage(msgMain,0,0,0)
+	If iResult=0 or iResult=-1 Then Exit Do
+	TranslateMessage(msgMain)
+	DispatchMessage(msgMain)
+Loop
+
+' Call destructores and exit process
+End
+
+Const WM_IS_LIFE = WM_USER+1
+Const WM_BOOTING = WM_USER+2
+Const ProgramName="ULA MemoryViewer"
+
+Enum WINDOW_ENABLE
+	WE_ALLEN
+	WE_NOCONNECT
+	WE_WORKING
+	WE_READY
+End Enum

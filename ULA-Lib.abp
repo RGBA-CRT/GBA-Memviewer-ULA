@@ -1,0 +1,524 @@
+'ULA TSET 
+'#console 
+'#include <EasyIO.sbp>
+#include "GBA-MakerCode.abp"
+Const WAIT_FOR_COMMAND=&H100*2
+
+Type GBA_HEADER
+	EntryPoint As DWord	'GBA PROGRAM START POINTER
+	NintendoLogo[155] As Byte
+	GameTitle[11] AS Byte
+	GameCode AS DWord
+	MakerCode AS Word
+	Fix1 AS Byte	'FIXED CODE 97
+	UnitCode AS Byte	'GBA=00
+	DeviceCode AS Byte	'bit7 = Debug
+	Rsv1[6] As Byte
+	Version As Byte
+	CheckSum AS Byte
+	Rsv[1] AS Byte
+EndType
+
+'ULA FW
+Const COMMAND_SIZE	=13
+Const RESPONSE_SIZE	=12
+
+'For Target
+Const TARGET_INIT			= &HFF
+Const TARGET_DOWNLOAD		= &H00
+
+'' For fwlib
+Const FWLIB_ROM_PROBE		= &H01
+Const FWLIB_WRAM_LOADEXEC	= &H02
+Const FWLIB_ROM_BERASE	= &H03
+Const FWLIB_ROM_WRITE		= &H04
+Const FWLIB_ROM_BWRITE	= &H05
+Const FWLIB_ROM_RAMWRITE	= &HF0
+Const FWLIB_READ			= &H06
+Const FWLIB_WRITE			= &H07
+Const FWLIB_FIND			= &H08
+Const FWLIB_BOOT_ROM		= &H09
+Const FWLIB_SRAM2EWRAM	= &H0a
+Const FWLIB_EWRAM2SRAM	= &H0b
+Const FWLIB_BU_PROBE		= &H0c
+Const FWLIB_SRAM_READ		= &H0d
+Const FWLIB_EEP_READ		= &H0e
+Const FWLIB_EEP_WRITE		= &H0f
+Const FWLIB_SRAM_WRITE	= &H10
+Const FWLIB_FLASH_WRITE	= &H11
+Const FWLIB_BLANK			= &H20
+Const FWLIB_IS_PRO		= &H21
+
+Const GBA_CART_ROM_ADDRESS	= &H08000000
+Const GBA_BACK_RAM_ADDRESS	= &H02010000
+
+'ULA LOADER 
+Const BUFF_SIZE= 	1024
+Const BLOCK_SIZE= 	32768
+
+Const WAIT_FOR_BACKUP_RAM	= 1000
+Const BACK_UP_MEMORY_SIZE	= &H8000
+
+Const FIRM_SIZE	= 8192
+
+Const BULK_IN_PIPE = 2
+Const BULK_OUT_PIPE = 3
+
+Const ULA_PROG_DOWNLOAD	= 1
+Const ULA_DATA_DOWNLOAD	= 2
+Const ULA_PROG_UPLOAD	= 	3
+Const ULA_DATA_UPLOAD	= 	4
+Const ULA_GET_CART_INFO	= 5
+
+Const ULA_BACK_UP_MEMORY_TYPE = 8
+Const ULA_CART_MEMORY_TYPE = 8
+
+Const LATEST_FIRMZ		= 0
+Const EMBEDDED_FIRMZ	= 0
+
+
+Declare Function DeviceIoControl Lib "kernel32" ( hDevice As HANDLE, dwIoControlCode As DWord,lpInBuffer As VoidPtr, nInBufferSize As Long,lpOutBuffer As VoidPtr, nOutBufferSize As DWord, lpBytesReturned As DWordPtr, pOverlapped As VoidPtr) As Byte
+
+Type VENDOR_REQUEST_IN 
+	bRequest As Byte
+	wValue AS Word
+	wIndex AS Word
+	wLength AS Word
+	direction As Byte
+	bData AS Byte
+EndType
+
+/*
+Type USB_DEVICE_DESCRIPTOR
+    bLength As Byte
+    bDescriptorType As Byte
+    bcdUSB[1] As Byte
+    bDeviceClass As Byte
+    bDeviceSubClass As Byte
+    bDeviceProtocol As Byte
+    bMaxPacketSize0 As Byte
+    idVendor[1] As Byte
+    idProduct[1] As Byte
+    bcdDevice[1] As Byte
+    iManufacturer As Byte
+    iProduct As Byte
+    SerialNumber As Byte
+    bNumConfigurations As Byte
+End Type*/
+
+Type BULK_TRANSFER_CONTROL
+    pipeNum As DWord
+End Type
+
+Const BUF_SIZE=1024
+Dim m_u8ULABuffer[BUF_SIZE] AS Byte
+Dim m_hULA AS HANDLE
+Dim m_nbyte As DWord
+Dim m_ret AS Byte
+Dim m_bulkControl As BULK_TRANSFER_CONTROL
+'Const IOCTL_EZUSB_BULK_WRITE=222051
+
+Const IOCTL_Ezusb_GET_STRING_DESCRIPTOR 	 = &H222044
+Const IOCTL_Ezusb_ANCHOR_DOWNLOAD 	 = &H22201c
+Const IOCTL_Ezusb_VENDOR_REQUEST 	 = &H222014
+Const IOCTL_EZUSB_BULK_WRITE 	 = &H222051
+Const IOCTL_EZUSB_BULK_READ 	 = &H22204e
+Const IOCTL_Ezusb_RESETPIPE 	 = &H222035
+
+Function DeviceIoControlM( hDevice As HANDLE, dwIoControlCode As DWord,lpInBuffer As VoidPtr, nInBufferSize As Long,lpOutBuffer As VoidPtr, nOutBufferSize As DWord, lpBytesReturned As DWord, lpOverlapped As VoidPtr) As Byte
+	Dim buf[2014] As Byte
+	wsprintf(buf, ex"\nDeviceIoControl {\n\thDevice : %d\n\tdwIoControlCode : %d\n\tlpInBuffer : &H%X\n\tnInBufferSize : %d\n\tlpOutBuffer : &H%X\n\tnOutBufferSize : %d\n\tlpBytesReturned : &H%X\n\tlpOverlapped : &H%X\n}\n\n", hDevice, dwIoControlCode, lpInBuffer, nInBufferSize, lpOutBuffer, nOutBufferSize, lpBytesReturned, lpOverlapped)
+	Print MakeStr(buf)
+	DeviceIoControlM= DeviceIoControl(hDevice, dwIoControlCode, lpInBuffer, nInBufferSize, lpOutBuffer, nOutBufferSize, lpBytesReturned, lpOverlapped)
+Endfunction
+
+Function ulaSetCommand(aCmd As Byte, aP1  As DWord, aP2 As DWord,  aP3 As DWord) AS Long
+	m_u8ULABuffer[ 0] = aCmd
+/*	m_u8ULABuffer[ 1] = (aP1)
+	m_u8ULABuffer[ 2] = (aP1 >>  8)
+	m_u8ULABuffer[ 3] = (aP1 >> 16)
+	m_u8ULABuffer[ 4] = (aP1 >> 24)
+
+	m_u8ULABuffer[ 5] = (aP2)
+	m_u8ULABuffer[ 6] = (aP2 >>  8)
+	m_u8ULABuffer[ 7] = (aP2 >> 16)
+	m_u8ULABuffer[ 8] = (aP2 >> 24)
+
+	m_u8ULABuffer[ 9] = (aP3)
+	m_u8ULABuffer[10] = (aP3 >>  8)
+	m_u8ULABuffer[11] = (aP3 >> 16)
+	m_u8ULABuffer[12] = (aP3 >> 24)*/
+	memcpy(m_u8ULABuffer+1,VarPtr(aP1),4)
+	memcpy(m_u8ULABuffer+5,VarPtr(aP2),4)
+	memcpy(m_u8ULABuffer+9,VarPtr(aP3),4)
+
+	m_ret = FALSE
+	m_bulkControl.pipeNum = BULK_OUT_PIPE
+	'm_ret = DeviceIoControl(m_hULA,	IOCTL_EZUSB_BULK_WRITE,	VarPtr(m_bulkControl),	sizeof(BULK_TRANSFER_CONTROL),	m_u8ULABuffer,	COMMAND_SIZE,m_nbyte,	NULL)
+	m_ret = DeviceIoControl(m_hULA, IOCTL_EZUSB_BULK_WRITE, VarPtr(m_bulkControl), sizeof(BULK_TRANSFER_CONTROL), m_u8ULABuffer, COMMAND_SIZE, VarPtr(m_nbyte), NULL)
+	if m_ret = 0 then
+		Print "Command Error :";GetLastError()
+		ErrMes(hMainWnd,"通信エラーが発生しました。","USB COMMAND ERROR",0)
+		ulaSetCommand=-1
+	Endif
+
+	Sleep(WAIT_FOR_COMMAND)
+End Function
+
+Function ulaBulkInData(aData As BytePtr, aDataSize As DWord) As Long
+	m_ret = FALSE
+
+	m_bulkControl.pipeNum = BULK_IN_PIPE
+	m_ret = DeviceIoControl(m_hULA, IOCTL_EZUSB_BULK_READ,  VarPtr(m_bulkControl), sizeof(BULK_TRANSFER_CONTROL), aData,aDataSize,VarPtr(m_nbyte),NULL)
+	if m_ret = FALSE Then
+		Print "BulkInData Error!"'MessageBox(aMsg, "Project xLA", MB_ICONSTOP)
+		ulaBulkInData=-1
+	Endif
+End Function
+
+Function ulaBulkOutData(aData As BytePtr, aDataSize As DWord) As Long
+	m_ret = FALSE
+
+	m_bulkControl.pipeNum = BULK_OUT_PIPE
+	m_ret = DeviceIoControl(m_hULA,IOCTL_EZUSB_BULK_WRITE,VarPtr(m_bulkControl),sizeof(BULK_TRANSFER_CONTROL),aData,aDataSize,VarPtr(m_nbyte),NULL)
+	if m_ret = FALSE Then
+		Print "BulkOutData Error : ";GetLastError()'MessageBox(aMsg, "Project xLA", MB_ICONSTOP)
+		ulaBulkOutData=-1
+	Endif
+End Function
+
+'gba_boot.bixの転送？ , フルパス指定城
+Function ulaFirmDownload(FirmFileName AS BytePtr) As Long
+	' For Firmware
+	Dim fFirmware AS HANDLE
+	Dim firmBuffer As BytePtr
+	Dim hXLA As HANDLE
+	Dim ret AS Byte
+	Dim nbyte AS DWord
+	Dim vreq AS VENDOR_REQUEST_IN
+
+	ret = FALSE
+
+	' xLA Handling
+	hXLA = CreateFile(ex"\\\\.\\ezusb-0",GENERIC_WRITE,FILE_SHARE_WRITE,ByVal NULL,	OPEN_EXISTING,	0,	NULL)
+	if hXLA <> INVALID_HANDLE_VALUE Then
+		DBM("ULA found. wait....")
+		'
+		' Start xLA session
+		'
+
+		'
+		' BixFile Open and Load Binary Image to Internal memory
+		'
+		fFirmware=OpenFile(FirmFileName,GENERIC_READ)
+		if fFirmware=INVALID_HANDLE_VALUE Then
+			ErrMes(hMainWnd,MakeStr(FirmFileName)+"が見つかりません","ULA接続エラー",0)
+			Goto *ERROR
+		Else
+			firmBuffer=calloc(GetFileSize(fFirmware,00))
+			LoadFile(fFirmware,firmBuffer,GetFileSize(fFirmware,00))
+			CloseHandle(fFirmware)
+		Endif
+
+		'
+		' Firmware download
+		'
+		' EZ-USB halt
+		vreq.bRequest = &HA0
+		vreq.wValue = &H7F92
+		vreq.wIndex = &H00
+		vreq.wLength = &H01
+		vreq.bData = 1
+		vreq.direction = &H00
+		ret = DeviceIoControl(hXLA,IOCTL_Ezusb_VENDOR_REQUEST,VarPtr(vreq),sizeof(VENDOR_REQUEST_IN),NULL,0,VarPtr(nbyte),NULL)
+		if ret = FALSE then
+			ErrMes(hMainWnd,"EZ-USB 停止エラー！", "ULA接続エラー", MB_ICONSTOP)
+			free(firmBuffer)
+			Goto *ERROR		
+		Endif
+
+		' EZ-USB firmware download
+		ret = DeviceIoControl(hXLA,IOCTL_Ezusb_ANCHOR_DOWNLOAD,firmBuffer,FIRM_SIZE,NULL,0,VarPtr(nbyte),NULL)
+		if ret = FALSE then
+			ErrMes(hMainWnd,"EZ-USBにファームウェアを書き込めませんでした。", "ULA接続エラー", MB_ICONSTOP)
+			free(firmBuffer)
+			Goto *ERROR
+		Endif
+
+		' EZ-USB Run
+		vreq.bRequest = &HA0
+		vreq.wValue = &H7F92
+		vreq.wIndex = &H00
+		vreq.wLength = &H01
+		vreq.bData = 0
+		vreq.direction = &H00
+		ret = DeviceIoControl(hXLA,IOCTL_Ezusb_VENDOR_REQUEST,VarPtr(vreq),sizeof(VENDOR_REQUEST_IN),NULL,0,VarPtr(nbyte),NULL)
+		if ret = FALSE Then
+			ErrMes(hMainWnd,"EZ-USB　実行エラー","ULA接続エラー",0)
+			Goto *ERROR
+		Endif
+
+		CloseHandle(hXLA)
+		free(firmBuffer)
+	else
+		MessageBox(0,"ULAデバイスが見つかりませんでした。", "ULA接続エラー", MB_ICONSTOP)
+		Goto *ERROR
+	Endif
+
+	ExitFunction
+*ERROR
+	if hXLA<>INVALID_HANDLE_VALUE Then CloseHandle(hXLA)
+	ulaFirmDownload=-1
+	ExitFunction
+EndFunction
+
+Function ulaSilentDownload(TargetFileName AS BytePtr)
+	Dim i AS Long
+	Dim m_fileSize AS Dword
+	Dim m_fh As HANDLE
+	Dim m_bufferCount As Long
+
+
+	' Get File Size
+	m_fh=OpenFile(TargetFileName,GENERIC_READ)
+	if m_fh=INVALID_HANDLE_VALUE Then Print "TargetFile Not found":ulaSilentDownload=-1:ExitFunction
+	m_fileSize=GetFileSize(m_fh,0)
+
+	ulaSetCommand(TARGET_DOWNLOAD, &H02010000, m_fileSize, 0)
+	SendMessage(hStartSelect,WM_BOOTING,0,0):	PumpMessage()
+
+	' File Transfer
+	m_bufferCount = (m_fileSize / BUFF_SIZE) AS Long
+	for i=0 To m_bufferCount'(i = 0i <= m_bufferCounti++)
+		LoadFile(m_fh, m_u8ULABuffer, BUFF_SIZE)
+		if ulaBulkOutData( m_u8ULABuffer, BUFF_SIZE) =-1 Then Print "ULA Prog Out error !!":Goto *CLOSE
+	Next i
+*CLOSE
+	CloseHandle(m_fh)
+End Function
+
+Type GBA_CARTINFO
+	RomType AS DWord
+	RomSize AS DWord
+	RomBlkSize As DWord
+	RamType AS DWord
+	RomUnusedSize AS DWord
+End Type
+
+Function ulaGetMemoryInfo(info As *GBA_CARTINFO) AS Long
+	' Get ROM Info
+	if ulaSetCommand(FWLIB_ROM_PROBE, 0, 0, 0) = -1 Then Print "ULA GetMemoryType command error !!":Goto *ERR_ULAMEM
+	if ulaBulkInData( m_u8ULABuffer, RESPONSE_SIZE) =-1 Then Print "ULA GetMemoryType response error !!":Goto *ERR_ULAMEM
+
+	info->RomType = m_u8ULABuffer[3] * &H1000000 + m_u8ULABuffer[2] * &H10000 + m_u8ULABuffer[1] * &H100 + m_u8ULABuffer[0]
+	info->RomSize = m_u8ULABuffer[7] * &H1000000 + m_u8ULABuffer[6] * &H10000 + m_u8ULABuffer[5] * &H100 + m_u8ULABuffer[4]
+	info->RomBlkSize = m_u8ULABuffer[11] * &H1000000 + m_u8ULABuffer[10] * &H10000 + m_u8ULABuffer[9] * &H100 + m_u8ULABuffer[8]
+
+	memcpy(VarPtr(info->RomType),m_u8ULABuffer,4)
+	memcpy(VarPtr(info->RomSize),m_u8ULABuffer+4,4)
+	memcpy(VarPtr(info->RomBlkSize),m_u8ULABuffer+8,4)
+	memcpy(VarPtr(info->RomBlkSize),m_u8ULABuffer,12)
+	' Get RAM Type
+	' 0:NONE 1:SRAM256K 2:SRAM512K 3:FLASH512K 4:EEPROM4K 5:EEPROM64K 6:FLASH1M
+	if ulaSetCommand(FWLIB_BU_PROBE, 0, 0, 0) =-1 Then Print "ULA GetRAMType command error !!":Goto *ERR_ULAMEM
+	if ulaBulkInData(m_u8ULABuffer, RESPONSE_SIZE) =-1 Then Print "ULA GetMemoryType response error !!":Goto *ERR_ULAMEM
+
+	info->RamType = m_u8ULABuffer[3] * &H1000000 + m_u8ULABuffer[2] * &H10000 + m_u8ULABuffer[1] * &H100 + m_u8ULABuffer[0]
+
+	' Get Unused size of Cart
+	if ulaSetCommand( FWLIB_BLANK, 0, 0, 0) =-1 Then Print "ULA GetMemoryType command error !!" :Goto *ERR_ULAMEM
+	if ulaBulkInData(m_u8ULABuffer, RESPONSE_SIZE) =-1 Then Print "ULA GetMemoryType response error !!":Goto *ERR_ULAMEM
+	info->RomUnusedSize = m_u8ULABuffer[3] * &H1000000 + m_u8ULABuffer[2] * &H10000 + m_u8ULABuffer[1] * &H100 + m_u8ULABuffer[0]
+
+	ulaGetMemoryInfo=0
+	ExitFunction
+*ERR_ULAMEM
+	ulaGetMemoryInfo=-1
+EndFunction
+
+Function ulaInit() AS Long
+	m_hULA = CreateFile(ex"\\\\.\\ezusb-0",	GENERIC_WRITE,FILE_SHARE_WRITE,ByVal NULL,OPEN_EXISTING,0,NULL)
+	if m_hULA=INVALID_HANDLE_VALUE Then Print "Could not find ULA system !!":ulaInit=-1:ExitFunction
+
+	Print "ULA Found."
+
+	'Target Reset
+	if ulaSetCommand(TARGET_INIT, 0, 0, 0)=-1 Then Print "ULA RESET error !!":ulaInit=-1 :ExitFunction
+EndFunction
+
+Const LABEL_BACKUP = 0
+Const LABEL_ROM = 1
+Const LABEL_BACKUP_SIZE = 2
+Function GetCartInfoLabel(Types AS Long,Value AS DWord) AS String
+	if Types=LABEL_BACKUP then
+		Select Case Value
+			Case 0 : GetCartInfoLabel="NONE"
+			Case 1 : GetCartInfoLabel="SRAM 256Kbit"
+			Case 2 : GetCartInfoLabel="SRAM 512K"
+			Case 3 : GetCartInfoLabel="FLASH 512K"
+			Case 4 : GetCartInfoLabel="EEPROM 4K"
+			Case 5 : GetCartInfoLabel="EEPROM 64K"
+			Case 6 : GetCartInfoLabel="FLASH 1M"
+			Case Else : GetCartInfoLabel="UNKNOWN"
+		EndSelect
+	Elseif Types=LABEL_ROM Then
+		Select Case Value
+			Case 0 : GetCartInfoLabel="EWRAM"
+			Case 1 : GetCartInfoLabel="MASK ROM"
+			Case 2 : GetCartInfoLabel="FLASH ROM"
+			Case 3 : GetCartInfoLabel="FLASH ROM"
+			Case 4 : GetCartInfoLabel="NDS RAM"
+			Case Else : GetCartInfoLabel="UNKNOWN"
+		EndSelect
+	Endif
+EndFunction
+
+Function GetBackupRamSize(RamType AS DWord) AS DWord
+	Select Case RamType
+		Case 0 : GetBackupRamSize=&H0000
+		Case 1 : GetBackupRamSize=&H8000
+		Case 2 : GetBackupRamSize=&H10000
+		Case 3 : GetBackupRamSize=&H10000
+		Case 4 : GetBackupRamSize=&H0100
+		Case 5 : GetBackupRamSize=&H2000
+		Case 6 : GetBackupRamSize=&H20000
+		Case Else : GetBackupRamSize=0
+	EndSelect
+EndFunction
+/*
+Type GBA_HEADER
+	EntryPoint As DWord	'GBA PROGRAM START POINTER
+	NintendoLogo[155] As Byte
+	GameTitle[11] AS Byte
+	GameCode AS DWord
+	MakerCode AS Word
+	Fix1 AS Byte	'FIXED CODE 97
+	UnitCode AS Byte	'GBA=00
+	DeviceCode AS Byte	'bit7 = Debug
+	Rsv1[6] As Byte
+	Version As Byte
+	CheckSum AS Byte
+	Rsv[1] AS Byte
+EndType*/
+/*
+Sub printf(lpFormat As BytePtr)(a As DWord ,b As DWord ,c As DWord ,d As DWord ,e As DWord ,f As DWord ,g As DWord ,h As DWord ,i As DWord ,j As DWord ,k As DWord )
+	Dim Buf AS BytePtr,ret AS Long,Ptr[10] AS DWord
+	Buf=calloc(lstrlen(lpFormat)+1024*4)
+	Ptr[0]=a:	Ptr[1]=b:	Ptr[2]=c:	Ptr[3]=d:	Ptr[4]=e:	Ptr[5]=f:	Ptr[6]=g:	Ptr[7]=h:	Ptr[8]=i:	Ptr[9]=j:	Ptr[10]=k:	ret=wsprintf(Buf,lpFormat,a,b,c,d,e,f,g,h,i,j,k)
+	Print MakeStr(Buf);
+	free(Buf)
+Endsub
+
+'4バイトマジックナンバーを文字列に変換
+Function Dw2Str(Data As DWORD) As String
+	Dim Str[4] As Byte
+	memcpy(Str,VarPtr(Data),4)
+	Str[4]=0
+	Dw2Str=MakeStr(Str)
+endFunction
+
+'Declare Function SetConsoleTitle Lib "kernel32" Alias "SetConsoleTitleA" (ByVal lpConsoleTitle As BytePtr) As Long 
+'Declare Function SetConsoleTextAttribute Lib "kernel32" (hConsoleOutput As HANDLE, wAttributes As Word) As Long
+
+
+Function Dump(Data As BytePtr,Size As DWORD)(VAdr As DWORD) AS DWORD
+	Dim Tmp[&H20] As Byte,i As Long,Adr As DWORD
+	
+	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), BACKGROUND_BLUE OR BACKGROUND_GREEN OR BACKGROUND_RED)
+	if VAdr=0 then Print " ADDRESS  00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F  0123456789ABCDEF "
+	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 1 OR 2 OR 3 OR 4)
+	Do
+		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), BACKGROUND_BLUE  OR 4 OR 3 )
+		wsprintf(Tmp,"%07X0 ",Adr+VAdr)
+		Print MakeStr(Tmp);
+		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 1 OR 2 OR 3 OR 4)
+		Print " ";
+		For i=0 To &H0F
+			if Adr*&H10+i=>Size then
+				wsprintf(Tmp,"%02X ",0)
+			Else 
+				wsprintf(Tmp,"%02X ",Data[Adr*&H10+i])
+			endif
+			Print MakeStr(Tmp);
+		Next i
+		Print " ";
+		For i=0 To &H0F
+			if Adr*&H10+i=>Size then Goto *EXIT_LOOP
+			if Data[Adr*&H10+i]<&H20 then 
+				Print ".";
+			Else
+				Print Chr$(Data[Adr*&H10+i]);
+			Endif
+		Next i
+		i=0
+		Adr++
+		if Adr*&H10+i=>Size then Goto *EXIT_LOOP
+		Print
+	Loop
+*EXIT_LOOP
+'	Print
+'	Print Hex$(Adr*&H10+i)+"="+Hex$(Size)
+	Dump=Adr
+Endfunction*/
+
+Sub ReadRomHeader()
+	Dim Header AS BytePtr
+	Header=calloc(1024*2)
+	'ReadHeader
+	if ulaSetCommand(FWLIB_READ, GBA_CART_ROM_ADDRESS, 1024, 0)=-1 Then Print "ROM READ error !!":ExitSub
+	if ulaBulkInData(Header, 1024) =-1 Then Print "ROM TRANS ERROR!":ExitSub
+	PrintGBAHeader(Header)
+	Print ex"\n\n //////////////////////// ROM HEADER AREA //////////////////////////////"
+	Dump(Header,1024,GBA_CART_ROM_ADDRESS)
+	free(Header)
+EndSub
+
+Sub PrintGBAHeader(Buf As BytePtr)
+	Dim GBA AS GBA_HEADER,i AS Long
+	memcpy(VarPtr(GBA),Buf,SizeOf(GBA_HEADER))
+'	GBA.GameTitle[11]=0
+	Print ex"GBA_HEADER {"
+	Print ex"\tProgramStartCode : 0x"+Hex$(GBA.EntryPoint)
+	Print ex"\tNintendo Logo : ";
+	For i=0 To 10
+		printf("%02X ",GBA.NintendoLogo[i])
+	Next i
+	printf(ex"...\n\tGameTitle : %-12s\n\tGameCode  : %s\n\tMakerCode : %2s\n\tMakerName : %s\n\tUnitCode  : %d -> ",GBA.GameTitle,Dw2Str(GBA.GameCode),Dw2Str(GBA.MakerCode),GetMakerName(GBA.MakerCode),GBA.UnitCode)
+	if GBA.UnitCode=0 Then
+		 Print "GameBoyAdvance"
+	Else
+		Print "Unknown"
+	Endif
+	printf(ex"\tDeviceCode: %02X\n\tROM Version : %01X.%01X\n\tCheckSum   : %02X\n}\n",GBA.DeviceCode,(GBA.Version And &HF0) >> 4,GBA.Version And&H0F,GBA.CheckSum)
+Endsub
+
+Sub Main()
+	Dim info AS GBA_CARTINFO
+	if ulaFirmDownload("gba_boot.bix")=-1 Then ExitSub
+	Print "gba_boot.bix OK"
+	'MessageBox(0,"Turn on GBA with START+SELECT!",0,0)
+	Sleep(WAIT_FOR_COMMAND)
+
+	Print "Initing ULA...";
+	if ulaInit() = -1 Then ExitSub
+	Print "-----------------------------------"
+	Print "  Turn ON GBA with START+SELECT!"
+	Print "-----------------------------------"
+
+	Sleep(WAIT_FOR_COMMAND)
+
+	Print "Firmware Downloading..."
+'	ulaSilentDownload("fwlib20030312.bin")
+	ulaSilentDownload("agb_prog.bin")
+	Sleep(WAIT_FOR_COMMAND)
+
+	Print "Waiting for transfer..."
+
+	ulaGetMemoryInfo(VarPtr(info))
+	DispCartInfo(info)
+
+	if info.RamType<>0 Then
+		ReadRomHeader()
+	endif
+	
+EndSub

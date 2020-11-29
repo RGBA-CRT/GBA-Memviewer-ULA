@@ -1,0 +1,188 @@
+Dim RomInfo AS GBA_HEADER
+
+Function ConnectToGBA() AS Long
+	'EZ-USB制御ファームを送信
+	if ulaFirmDownload("gba_boot.bix")=-1 Then ConnectToGBA=-1:ExitFunction
+	Print "gba_boot.bix OK"
+	Sleep(WAIT_FOR_COMMAND)
+
+	'ULAを初期化＆ハンドル取得
+	Print "Initing ULA...";
+	if ulaInit() = -1 Then ConnectToGBA=-2:ExitFunction
+
+	'ULAHostV2のGBA制御ROMを転送
+	if SendMessage(hStartSelect,WM_IS_LIFE,0,0)<>1 Then CreateDialog(hMainWnd,"StartSelect"):	PumpMessage()
+	Sleep(WAIT_FOR_COMMAND)
+
+	Print "Firmware Downloading..."
+	ulaSilentDownload("fwlib20030312.bin")
+
+	Sleep(WAIT_FOR_COMMAND)
+	SendMessage(hStartSelect,WM_CLOSE,0,0)
+EndFunction
+
+Sub ExitULA()
+	CloseHandle(m_hULA)
+	DBM("GBA connection is closed.")
+	SetWindowEnable(WE_NOCONNECT)
+EndSub
+
+Sub DispCartInfo(ByRef info as GBA_CARTINFO,RomHeader AS BytePtr)
+	Dim buf AS BytePtr,p AS DWord,i As Long,UnitName AS BytePtr
+	Dim GBA AS GBA_HEADER
+	memcpy(VarPtr(GBA),RomHeader,SizeOf(GBA_HEADER))
+	memcpy(VarPtr(RomInfo),RomHeader,SizeOf(GBA_HEADER))
+
+	buf=calloc(1024*5)
+	p=wsprintf(buf,ex"GBA cartridge info { \r\n\tROM TYPE : %s \r\n\tROM SIZE : %dMBit [%d Byte]\r\n\tRAM TYPE : %s\r\n\tRAM SIZE : %dByte\r\n\tFREE SIZE: %d\r\n}\r\n", _
+		GetCartInfoLabel(LABEL_ROM,info.RomType),(info.RomSize / (1024 * 1024) * 8) AS Long,info.RomSize,GetCartInfoLabel(LABEL_BACKUP,info.RamType),GetBackupRamSize(info.RomType),info.RomUnusedSize)
+
+	p+=wsprintf(buf+p,ex"Game Info {\r\n\tProgramStartCode : 0x%X\r\n\tNintendo Logo : ",GBA.EntryPoint)
+	For i=0 To 10
+		p+=wsprintf(buf+p,"%02X ",GBA.NintendoLogo[i])
+	Next i
+	if GBA.UnitCode=0 Then
+		 UnitName="GameBoyAdvance"
+	Else
+		UnitName="Unknown"
+	Endif
+	wsprintf(buf+p,ex"...\r\n\tGameTitle : %-12s\r\n\tGameCode  : %s\r\n\tMakerCode : %2s\r\n\tMakerName : %s\r\n\tUnitCode  : %d -> %s\r\n\tDeviceCode: %02X\r\n\tROM Version : %01X.%01X\r\n\tCheckSum   : %02X\r\n}\r\n", _ 
+		GBA.GameTitle,Dw2Str(GBA.GameCode),Dw2Str(GBA.MakerCode),GetMakerName(GBA.MakerCode),GBA.UnitCode,UnitName,GBA.DeviceCode,(GBA.Version And &HF0) >> 4,GBA.Version And&H0F,GBA.CheckSum)
+
+	SetDataView(buf)
+	free(buf)
+EndSub
+
+Sub EnableDSExRAM(isEnable As Byte)
+	ulaSetCommand(FWLIB_WRITE,&H8240000,1,0)
+	if ulaBulkOutData(VarPtr(isEnable),1) =-1 Then Print "WRITE RAM ENABLE REGISTER!":ExitSub
+	Sleep(WAIT_FOR_COMMAND)
+EndSub
+
+Const DS_TRANCE_MAX = 1024*100
+Function WriteDSExRAM(Path As BytePtr) AS Long
+	Dim hFile AS HANDLE,Data AS BytePtr,Size AS DWord,FileSize AS DWord,left AS Long,CPP AS DWord
+'	if Size > &H7FFFFF Then Print "DS EX RAM CAPASITY IS 0x7FFFFF":ExitFunction
+
+	EnableDSExRAM(1)
+
+	hFile=OpenFile(Path,GENERIC_READ)
+	if hFile=-1 Then Print "Cannot open file!":WriteDSExRAM=-1:ExitFunction
+	Data=calloc(BUFF_SIZE+5)
+
+	FileSize=GetFileSize(hFile,0)
+	left=FileSize
+	Do
+		if left <= DS_TRANCE_MAX Then	'ラストループ
+	'		debug
+			Size=left
+		Else
+			Size=DS_TRANCE_MAX
+		Endif
+
+		if ulaSetCommand(FWLIB_WRITE,&H9000000+CPP*DS_TRANCE_MAX,Size,0) =-1 Then Print "ERR FWWRITE":WriteDSExRAM=-1:Goto *ERR_WRITEDS
+	'	Sleep(WAIT_FOR_COMMAND)
+
+		dim C AS Long,i As Long
+		C=Size / BUFF_SIZE
+		if Size Mod BUFF_SIZE Then C++
+
+		Print "Start Transrate[";CPP;"]"';
+
+		For i = 1 To C 'Step -1
+			if LoadFile(hFile,Data,BUFF_SIZE) = -1 then Print "FILE ERR!":WriteDSExRAM=-1:debug:Goto *ERR_WRITEDS
+
+			Print ".";
+	'		Print "FilePointer :";GetFilePointer(hFile);"/";GetFileSize(hFile,0);" -> ";Int(GetFilePointer(hFile)/GetFileSize(hFile,0)*100);"%"
+
+			SetConsoleTitle(Str$((GetFilePointer(hFile)/FileSize*100) AS Long)+"%")
+			if ulaBulkOutData(Data,BUFF_SIZE) =-1 Then Print "WRITE RAM CART ERROR!":WriteDSExRAM=-1:Goto *ERR_WRITEDS
+				'if C=i+5 Then exitfor
+		'	if GetFilePointer(hFile)=FileSize Then ExitFor
+		Next i
+		left-=DS_TRANCE_MAX
+		if left <= 0 Then ExitDo
+		CPP++
+	'	if CPP=2 then exitdo
+	'	Exitdo
+	Loop
+
+*ERR_WRITEDS
+	Print ex"\nFilePointer :";GetFilePointer(hFile);"/";GetFileSize(hFile,0);" -> ";Int(GetFilePointer(hFile)/GetFileSize(hFile,0)*100);"%"
+	free(Data):	CloseHandle(hFile)
+	Print "OK"
+	Print 
+
+
+'	DumpROM(Size)
+
+EndFunction
+
+Sub DumpAddress(Address AS BytePtr,Size AS Long)
+	Dim Data AS BytePtr,C as Long,least AS Long,txt aS BytePtr
+	Data=calloc(Size+50)
+	if ulaSetCommand(FWLIB_READ, Address, Size, 0)=-1 Then Print "ROM READ error !!":ExitSub
+	'1バッファより小さい場合
+	if Size < BUFF_SIZE Then
+		if ulaBulkInData(Data, Size) =-1 Then Print "ROM TRANS ERROR!":ExitSub
+	Else
+		least=Size
+		Do
+			least-=BUFF_SIZE
+			if least>=0 then
+				if ulaBulkInData(Data, BUFF_SIZE) =-1 Then Print "ROM TRANS ERROR!":ExitSub
+				if least=0 Then ExitDo
+			Else
+				if ulaBulkInData(Data, least) =-1 Then Print "ROM TRANS ERROR!":ExitSub
+				Exitdo
+			Endif
+		Loop
+	Endif
+	txt=DumpToPtr(Data,Size,Address)
+	SetDataView(txt)
+	free(Data)
+	free(txt)
+EndSub
+
+Function BootGBA() As Long
+	if ulaSetCommand(FWLIB_BOOT_ROM,0,0,0) =-1 Then Print "BootGBA Error!":BootGBA=-1
+EndFunction
+
+Function DumpToPtr(Data As BytePtr,Size As DWORD)(VAdr As DWORD) AS BytePtr
+	Dim Tmp[&H20] As Byte,i As Long,Adr As DWORD,p AS DWord
+
+	DumpToPtr=calloc(Size*10+1024)
+	pstrcat(DumpToPtr,ex"ADDRESS   00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F  0123456789ABCDEF \r\n",p)
+
+	Do
+		p+=wsprintf(DumpToPtr+p,"%07X0 ",Adr+(VAdr)/&H10)
+		'Print MakeStr(Tmp);
+		'SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 1 OR 2 OR 3 OR 4)
+		pstrcat(DumpToPtr," ",p,1)
+		For i=0 To &H0F
+			if Adr*&H10+i=>Size then
+				p+=wsprintf(DumpToPtr+p,"%02X ",0)
+			Else 
+				p+=wsprintf(DumpToPtr+p,"%02X ",Data[Adr*&H10+i])
+			endif
+			'Print MakeStr(Tmp);
+		Next i
+		pstrcat(DumpToPtr," ",p,1)
+		For i=0 To &H0F
+			if Adr*&H10+i=>Size then Goto *EXIT_LOOP
+			if Data[Adr*&H10+i]<&H20 Or Data[Adr*&H10+i]>&HEF then 
+				pstrcat(DumpToPtr,".",p,1)
+			Else
+				p+=wsprintf(DumpToPtr+p,"%1c",Data[Adr*&H10+i])
+			Endif
+		Next i
+		i=0
+		Adr++
+		if Adr*&H10+i=>Size then Goto *EXIT_LOOP
+		pstrcat(DumpToPtr,ex"\r\n",p,2)
+	Loop
+*EXIT_LOOP
+'	Print
+'	Print Hex$(Adr*&H10+i)+"="+Hex$(Size)
+
+Endfunction

@@ -1,0 +1,291 @@
+'-----------------------------------------------------------------------------
+'  イベント プロシージャ
+'-----------------------------------------------------------------------------
+' このファイルには、ウィンドウ [MainWnd] に関するイベントをコーディングします。
+' ウィンドウ ハンドル: hMainWnd
+
+' TODO: この位置にグローバルな変数、構造体、定数、関数を定義します。
+Function MWnd(ChildWndID as Long) AS HANDLE
+	MWnd=GetDlgItem(hMainWnd,ChildWndID)
+EndFunction
+
+'-----------------------------------------------------------------------------
+' ウィンドウメッセージを処理するためのコールバック関数
+
+Function MainWndProc(hWnd As HWND, dwMsg As DWord, wParam As WPARAM, lParam As LPARAM) As DWord
+	' TODO: この位置にウィンドウメッセージを処理するためのコードを記述します。
+
+	' イベントプロシージャの呼び出しを行います。
+	MainWndProc=EventCall_MainWnd(hWnd,dwMsg,wParam,lParam)
+End Function
+
+
+'-----------------------------------------------------------------------------
+' ここから下は、イベントプロシージャを記述するための領域になります。
+
+Sub SetWindowEnable(Code AS Byte)
+	Select Case Code
+		Case WE_ALLEN
+			EnableWindow(MWnd( CommandButton1  ),TRUE)
+			EnableWindow(MWnd( CommandButton2  ),TRUE)
+			EnableWindow(MWnd( CommandButton3  ),TRUE)
+			EnableWindow(MWnd( CommandButton4  ),TRUE)
+			EnableWindow(MWnd( CommandButton5  ),TRUE)
+			EnableWindow(MWnd( CommandButton6  ),TRUE)
+			EnableWindow(MWnd( CommandButton7  ),TRUE)
+			EnableWindow(MWnd( CommandButton8  ),TRUE)
+			EnableWindow(MWnd( CommandButton9  ),TRUE)
+			EnableWindow(MWnd( CommandButton10 ),TRUE)
+			EnableWindow(MWnd( CommandButton11 ),TRUE)
+			EnableWindow(MWnd( CommandButton12 ),TRUE)
+			EnableWindow(MWnd( EDIT_DUMP ),TRUE)
+			EnableWindow(MWnd( AddressBox ),TRUE)
+			EnableWindow(MWnd( Static1 ),TRUE)
+		Case WE_NOCONNECT
+			'初期状態（接続ボタン以外OFF）
+			EnableWindow(MWnd( CommandButton1  ),TRUE)
+			EnableWindow(MWnd( CommandButton2  ),FALSE)
+			EnableWindow(MWnd( CommandButton3  ),FALSE)
+			EnableWindow(MWnd( CommandButton4  ),FALSE)
+			EnableWindow(MWnd( CommandButton5  ),FALSE)
+			EnableWindow(MWnd( CommandButton6  ),FALSE)
+			EnableWindow(MWnd( CommandButton7  ),FALSE)
+			EnableWindow(MWnd( CommandButton8  ),FALSE)
+			EnableWindow(MWnd( CommandButton9  ),FALSE)
+			EnableWindow(MWnd( CommandButton10 ),FALSE)
+			EnableWindow(MWnd( CommandButton11 ),FALSE)
+			EnableWindow(MWnd( CommandButton12 ),FALSE)
+			EnableWindow(MWnd( EDIT_DUMP ),FALSE)
+			EnableWindow(MWnd( AddressBox ),FALSE)
+			EnableWindow(MWnd( Static1 ),FALSE)
+			EnableWindow(MWnd( AddressBox ),FALSE)
+		Case WE_WORKING
+			'通信中
+			EnableWindow(MWnd( CommandButton1  ),FALSE)
+			EnableWindow(MWnd( CommandButton2  ),FALSE)
+			EnableWindow(MWnd( CommandButton3  ),FALSE)
+			EnableWindow(MWnd( CommandButton4  ),FALSE)
+			EnableWindow(MWnd( CommandButton5  ),FALSE)
+			EnableWindow(MWnd( CommandButton6  ),FALSE)
+			EnableWindow(MWnd( CommandButton7  ),FALSE)
+			EnableWindow(MWnd( CommandButton8  ),FALSE)
+			EnableWindow(MWnd( CommandButton9  ),FALSE)
+			EnableWindow(MWnd( CommandButton10 ),FALSE)
+			EnableWindow(MWnd( CommandButton11 ),FALSE)
+			EnableWindow(MWnd( CommandButton12 ),FALSE)
+			EnableWindow(MWnd( EDIT_DUMP ),FALSE)
+			EnableWindow(MWnd( AddressBox ),FALSE)
+			EnableWindow(MWnd( Static1 ),FALSE)
+			EnableWindow(MWnd( AddressBox ),FALSE)
+		Case WE_READY
+			'操作待ち
+			EnableWindow(MWnd( CommandButton1  ),FALSE)
+			EnableWindow(MWnd( CommandButton2  ),TRUE)
+			EnableWindow(MWnd( CommandButton3  ),TRUE)
+			EnableWindow(MWnd( CommandButton4  ),TRUE)
+			EnableWindow(MWnd( CommandButton5  ),TRUE)
+			EnableWindow(MWnd( CommandButton6  ),TRUE)
+			EnableWindow(MWnd( CommandButton7  ),TRUE)
+			EnableWindow(MWnd( CommandButton8  ),TRUE)
+			EnableWindow(MWnd( CommandButton9  ),TRUE)
+			EnableWindow(MWnd( CommandButton10 ),TRUE)
+			EnableWindow(MWnd( CommandButton11 ),TRUE)
+			EnableWindow(MWnd( CommandButton12 ),TRUE)
+			EnableWindow(MWnd( EDIT_DUMP ),TRUE)
+			EnableWindow(MWnd( AddressBox ),TRUE)
+			EnableWindow(MWnd( Static1 ),TRUE)
+			EnableWindow(MWnd( EDIT_DUMP ),TRUE)
+	EndSelect
+EndSub
+Sub DoWork(Text AS BytePtr)
+	DBM(Text):	SetWindowEnable(WE_WORKING)
+EndSub
+
+Sub ExitWork()
+	DBM("GBA connection is Active!"):	SetWindowEnable(WE_READY)
+EndSUb
+
+
+'終了処理
+Sub MainWnd_Destroy()
+	ULA_AB_DestroyObjects()
+	PostQuitMessage(0)
+End Sub
+
+Sub MainWnd_CommandButton5_Click()
+	SendMessage(GetDlgItem(hMainWnd,hProg),PBM_STEPIT,0,0)
+End Sub
+
+'ROM Dump Screen
+Sub MainWnd_CommandButton3_Click()
+	DialogBox(hMainWnd,"Dump")
+End Sub
+
+Sub MainWnd_Create(ByRef CreateStruct As CREATESTRUCT)
+	Dim hFont AS DWord
+	hFont=CreateFont(-12,0,0,0,400,0,0,0,SHIFTJIS_CHARSET,OUT_RASTER_PRECIS,0,DEFAULT_QUALITY,FIXED_PITCH,"ＭＳ ゴシック") As DWord
+    SendMessage(MWnd(EDIT_DUMP),WM_SETFONT,hFont,TRUE)
+    SendMessage(MWnd(AddressBox),WM_SETFONT,hFont,TRUE)
+	SendMessage(MWnd(AddressBox),CB_ADDSTRING,0,"[BIOS]0x00000000" As Long)
+	SendMessage(MWnd(AddressBox),CB_ADDSTRING,0,"[WRAM]0x02000000" As Long)
+	SendMessage(MWnd(AddressBox),CB_ADDSTRING,0,"[IRAM]0x03000000" As Long)
+	SendMessage(MWnd(AddressBox),CB_ADDSTRING,0,"[I/O ]0x04000000" As Long)
+	SendMessage(MWnd(AddressBox),CB_ADDSTRING,0,"[PALT]0x05000000" As Long)
+	SendMessage(MWnd(AddressBox),CB_ADDSTRING,0,"[VRAM]0x06000000" As Long)
+	SendMessage(MWnd(AddressBox),CB_ADDSTRING,0,"[OAM ]0x07000000" As Long)
+	SendMessage(MWnd(AddressBox),CB_ADDSTRING,0,"[ROM1]0x08000000" As Long)
+	SendMessage(MWnd(AddressBox),CB_ADDSTRING,0,"[DSRM]0x09000000" As Long)
+	SendMessage(MWnd(AddressBox),CB_ADDSTRING,0,"[ROM2]0x0A000000" As Long)
+	SendMessage(MWnd(AddressBox),CB_ADDSTRING,0,"[ROM3]0x0C000000" As Long)
+	SendMessage(MWnd(AddressBox),CB_ADDSTRING,0,"[SRAM]0x0E000000" As Long)
+	SendMessage(MWnd(AddressBox),CB_SETCURSEL,7,0)
+	SetWindowEnable(WE_NOCONNECT)
+End Sub
+
+
+Sub MainWnd_CommandButton8_Click()
+	ErrMes(hMainWnd,"未実装です！！！！！！！！！！！！","申し訳ない",0)
+End Sub
+
+Sub MainWnd_CommandButton9_Click()
+'	ErrMes(hMainWnd,"未実装です！！！！！！！！！！！！","申し訳ない2",0)
+'	DumpClass.StartDump(&H08000000,1024*1024,"d:\test.gba")
+	EnableDSExRAM(1)
+End Sub
+
+Sub MainWnd_CommandButton7_Click()
+	ErrMes(hMainWnd,"未実装です！！！！！！！！！！！！","申し訳ない",0)
+End Sub
+
+Sub MainWnd_CommandButton2_Click()
+	DoWork("During transferring data...")
+
+	Dim info AS GBA_CARTINFO
+
+	'ROMヘッダとカセット情報を取得
+	Dim Header AS BytePtr
+	Header=calloc(1024)
+	if ulaSetCommand(FWLIB_READ, GBA_CART_ROM_ADDRESS, 512, 0)=-1 Then Print "ROM READ error !!":ExitSub
+	if ulaBulkInData(Header, 512) =-1 Then Print "ROM TRANS ERROR!":ExitSub
+
+	ulaGetMemoryInfo(VarPtr(info))
+	DispCartInfo(info,Header)
+	free(Header)
+	ExitWork()
+End Sub
+
+Sub DBM(Text AS BytePtr)
+	SetWindowText(MWnd(DBM),Text)
+	Print MakeStr(Text)
+EndSub
+
+Sub MainWnd_CommandButton1_Click()
+	DBM("Connection to GBA...")
+	SetWindowEnable(WE_WORKING)
+	if ConnectToGBA()<>0 Then 
+		DBM("Connect to GBA is failed!!!")
+		'ErrMes(hMainWnd,"GBAとの接続に失敗しました。","ULA接続エラー",0)
+		SetWindowEnable(WE_NOCONNECT)
+		ExitSub
+	endif
+	MainWnd_CommandButton2_Click()
+	ExitWork()
+End Sub
+
+Sub SetDataView(Data as BytePtr)
+	SetWindowText(GetDlgItem(hMainWnd,EDIT_DUMP),Data)
+EndSub
+
+'Goボタン
+Sub MainWnd_CommandButton4_Click()
+	DoWork("During transferring data...")
+	Dim Address AS DWord,ID aS DWord
+	ID=SendMessage(MWnd(AddressBox),CB_GETCURSEL ,0,0)
+	if ID=-1 Then
+		Address=GetDlgItemHex(MWnd(AddressBox))
+	Else
+		Select Case ID
+			Case 0:Address=&H00000000
+			Case 1:Address=&H02000000
+			Case 2:Address=&H03000000
+			Case 3:Address=&H04000000
+			Case 4:Address=&H05000000
+			Case 5:Address=&H06000000
+			Case 6:Address=&H07000000
+			Case 7:Address=&H08000000
+			Case 8:Address=&H09000000
+			Case 9:Address=&H0A000000
+			Case 10:Address=&H0C000000
+			Case 11:Address=&H0E000000
+		EndSelect
+	endif
+	DumpAddress(Address,1024)
+	ExitWork()
+End Sub
+
+Sub MainWnd_CommandButton11_Click()
+	Dim a aS BytePtr,b AS BytePtr
+	a=calloc(1024)
+	FillMemory(a,1024,&HFF)
+	b=DumpToPtr(a,1024)
+	SetDataView(b)
+	free(a)
+	free(b)
+	SendMessage(MWnd(hProg), PBM_SETRANGE,0,MAKELONG(0,5))
+		SendMessage(MWnd(hProg), PBM_SETSTEP,1,0)
+
+End Sub
+
+Sub MainWnd_CommandButton13_Click()
+	SetWindowEnable(WE_READY)
+End Sub
+Sub MainWnd_CommandButton14_Click()
+	SetWindowEnable(WE_WORKING)
+End Sub
+
+Sub MainWnd_CommandButton10_Click()
+	if MessageBox(hMainWnd,ex"ゲームを起動すると通信が切断されます。\nよろしいですか？","ULA切断確認",MB_YESNO Or MB_ICONQUESTION)=IDYES Then
+		if BootGBA()=-1 Then ErrMes(hMainWnd,"GBAカートリッジの起動に失敗しました。","GBA boot error!",0):ExitSub
+		ExitULA()
+	endif
+End Sub
+
+
+Sub MainWnd_CommandButton15_Click()
+	SetWindowEnable(WE_NOCONNECT)
+End Sub
+
+Sub MainWnd_CommandButton16_Click()
+	SetWindowEnable(WE_ALLEN)
+End Sub
+
+Sub MainWnd_KeyPress(KeyCode As Long, flags As Long)
+	Print "P :";KeyCode
+	if KeyCode=27 Then 
+		if MessageBox(hMainWnd,"本当に吸い出しをキャンセルしますか？","Cancel?",MB_YESNO) <> IDYES Then ExitSub
+		DumpClass.Cancel()
+		MessageBox(hMainWnd,ex"吸出しをキャンセルしました。\nGBAの電源を切ってください。","Dumping is canceled",MB_OK)
+		ExitULA()
+	endif
+End Sub 
+
+Sub MainWndommandButton17_Click()
+debug
+End Sub
+
+Sub MainWnd_EDIT_DUMP_Change()
+
+End Sub
+
+Sub MainWnd_CommandButton12_Click()
+	ExitULA()
+
+End Sub
+
+Sub MainWnd_CommandButton6_Click()
+	'Todo
+	'DSメモリ拡張カードかチェック
+	'プログレスバー、中止キー
+	'スイッチ切り替え支持
+	WriteDSExRAM("MDM.gba")	
+End Sub

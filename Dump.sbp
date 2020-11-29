@@ -1,0 +1,289 @@
+'-----------------------------------------------------------------------------
+'  イベント プロシージャ
+'-----------------------------------------------------------------------------
+' このファイルには、ウィンドウ [Dump] に関するイベントをコーディングします。
+' ウィンドウ ハンドル: hDump
+
+' TODO: この位置にグローバルな変数、構造体、定数、関数を定義します。
+Function DWnd(ChildWndID as Long) AS HANDLE
+	DWnd=GetDlgItem(hDump,ChildWndID)
+EndFunction
+
+'-----------------------------------------------------------------------------
+' ウィンドウメッセージを処理するためのコールバック関数
+
+Function DumpProc(hWnd As HWND, dwMsg As DWord, wParam As WPARAM, lParam As LPARAM) As DWord
+	' TODO: この位置にウィンドウメッセージを処理するためのコードを記述します。
+
+	' イベントプロシージャの呼び出しを行います。
+	DumpProc=EventCall_Dump(hWnd,dwMsg,wParam,lParam)
+End Function
+Dim DumpClass AS ULA_TRANCE
+
+'-----------------------------------------------------------------------------
+' ここから下は、イベントプロシージャを記述するための領域になります。
+
+Sub Dump_Static3_Click()
+
+End Sub
+
+Sub Dump_CommandButton2_Click()
+	EndDialog(hDump,IDCANCEL)
+End Sub
+
+Sub Dump_CommandButton1_Click()
+	Dim ofn as OPENFILENAME
+	with ofn
+		.lStructSize=sizeof(OPENFILENAME)
+		.hwndOwner=hDump
+		.lpstrFilter = ex"GBA ROM FILE(*.gba)\0*.gba\0ALL FILES(*.*)\0*.*\0\0"'StrPtr(sFilter)
+		.nMaxFile = MAX_PATH
+		.lpstrFile=calloc(MAX_PATH*2)
+		.nFilterIndex = 1
+		.Flags=OFN_OVERWRITEPROMPT
+		.lpstrDefExt="gba"
+		memcpy(.lpstrFile,RomInfo.GameTitle,12)
+	EndWith
+	if GetSaveFileName(ofn) = 0 Then
+		Print "CANSELED"
+		Goto *EXIT_CMD1
+	endif
+	Print MakeStr(ofn.lpstrFile)
+	SetWindowText(DWnd(EditBox4),ofn.lpstrFile)
+*EXIT_CMD1
+	free(ofn.lpstrFile)
+End Sub
+
+Sub Dump_CommandButton3_Click()
+	dim cart AS GBA_CARTINFO
+
+	if ulaGetMemoryInfo(VarPtr(cart)) = -1 Then ExitSub
+	if cart.RomType <> 1 Then
+		if MessageBox(hDump,"一般ゲームカセットではないようです。続行しますか？","Not MASK-ROM",MB_YESNO Or MB_ICONQUESTION) = IDNO Then ExitSub
+	endif
+
+	if GetCheck(DWnd(RadioButton1))=TRUE Then
+		Print "Auto"
+		if cart.RomSize=0 Then		ErrMes(hDump,"カートリッジが挿入されていません。","エラー",0):ExitSub
+		DumpClass.StartDump(&H08000000,cart.RomSize,"d:\test.gba")
+	Elseif GetCheck(DWnd(RadioButton2))=TRUE Then
+		Print "Header"
+		DumpClass.StartDump(&H08000000,1024,"d:\test.gba")
+	Elseif GetCheck(DWnd(RadioButton3))=TRUE Then
+		Print "CustumSize"
+		Dim Size AS DWord
+		Dim In AS DWord
+		In=GetDlgItemHex(DWnd(EditBox5))
+		Select Case SendMessage(DWnd(ComboBox1),CB_GETCURSEL ,0,0)
+			Case 0: Size=In*1024*1024		:Print "MB"
+			Case 1: Size=In*1024			:Print "KB"
+			Case 2: Size=In					:Print "Byte"
+			Case 3: Size=In*(1024*1024)/8	:Print "Mbit"
+			Case 4: Size=In*(1024)/8		:Print "Kbit"
+			Case 5: Size=In/8				:Print "bit"
+		EndSelect
+		DumpClass.StartDump(&H08000000,Size,"d:\test.gba")
+	Elseif GetCheck(DWnd(RadioButton4))=TRUE Then
+		Print "Manual"
+		DumpClass.StartDump(GetDlgItemHex(DWnd(EditBox2)),GetDlgItemHex(DWnd(EditBox3)),"d:\test.gba")
+	endif
+
+	EndDialog(hDump,IDCANCEL)
+End Sub
+
+Sub DumpCallback(di AS *THREAD_VALUES)
+	Dim per AS Byte
+	if di->CallBackTemp=0 Then
+		'初回動作
+		SetWindowEnable(WE_WORKING)
+		SendMessage(MWnd(hProg), PBM_SETRANGE,0,MAKELONG(0,(di->Size/BUFF_SIZE) AS Word))
+		SendMessage(MWnd(hProg), PBM_SETSTEP,1,0)
+		'パーセント表示エリアを可視へ
+		SetWindowText(MWnd(Static4),"0%")
+		ShowWindow(MWnd(Static4),SW_SHOW)
+		DBM("Dumping ROM ...   [Press ESC to cancel dumping]")
+		di->CallBackTemp=1
+	elseif di->CallBackTemp=2 Then
+		'終了処理
+		ShowWindow(MWnd(Static4),SW_HIDE)
+		SetWindowEnable(WE_READY)
+		MessageBeep(MB_ICONASTERISK)
+		FlashWindow(hMainWnd,TRUE)
+		if di->ExitCode=TRUE Then
+			MessageBox(hMainWnd,"吸出しが終了しました！","Dumping successful!!!",MB_ICONASTERISK)
+			DBM("Dumping ROM successful!!!")
+		Elseif di->ExitCode=FALSE Then
+			MessageBox(hMainWnd,"吸出しに失敗しました。","Dumping failed...",MB_ICONHAND)
+			DBM("Dumping ROM failed...")
+		else 
+			DBM("Dumping ROM canceled.")
+		endif
+		SendMessage( MWnd(hProg), PBM_SETPOS, 0, 0 )
+	endif
+	per=( (di->Size - di->least) / di->Size * 100) AS Byte
+	if per<>di->PerCent then
+		Dim txt[6] As Byte
+		wsprintf(txt,"%3d%%",per)
+		SetWindowText(MWnd(Static4),txt)
+		di->PerCent=per
+	endif
+	SendMessage(GetDlgItem(hMainWnd,hProg),PBM_STEPIT,0,0)
+
+EndSub
+
+Type THREAD_VALUES
+	Mode aS Byte		'0=Dump
+	Address AS DWord
+	Size As DWord
+	least AS DWord
+	hFile AS HANDLE
+	ExitCode AS Byte
+	ExitFlag AS Byte
+	PerCent AS Byte
+	CallBack AS *Sub(status As *THREAD_VALUES)
+	CallBackTemp AS Byte
+EndType
+
+Class ULA_TRANCE
+Private
+	DumpInfo AS THREAD_VALUES
+	hTh AS HANDLE
+	dwThID AS VoidPtr
+Public
+	Sub DumpThread(di AS *THREAD_VALUES)
+		Dim buf AS BytePtr
+		di->ExitCode=TRUE
+
+		'READ COMMAND
+		if ulaSetCommand(FWLIB_READ, di->Address, di->Size, 0)=-1 Then 
+			Print "ROM READ COMMAND error !!"
+			di->ExitCode=1
+			ExitSub
+		Endif
+		buf=calloc(BUFF_SIZE+5)
+		di->least=di->Size
+		'吸出しループ
+		Do
+			if di->least > BUFF_SIZE then
+				if ulaBulkInData(buf, BUFF_SIZE) =-1 Then di->ExitCode=FALSE:Goto *EXIT_THREAD
+				OutFile(di->hFile,buf,BUFF_SIZE)
+			Else
+				if ulaBulkInData(buf,BUFF_SIZE) =-1 Then di->ExitCode=FALSE:Goto *EXIT_THREAD
+				OutFile(di->hFile,buf,di->least)
+				Exitdo
+			Endif
+			di->least-=BUFF_SIZE
+			if di->CallBack<>0 Then di->CallBack(di)
+			if di->ExitFlag=TRUE Then di->ExitCode=2:ExitDo
+		Loop
+
+	*EXIT_THREAD
+		CloseHandle(di->hFile)
+		di->hFile=0
+		free(buf)
+		di->CallBackTemp=2
+		di->CallBack(di)
+		Print "ExitThread"
+		ExitThread(di->ExitCode)
+	EndSub
+
+	Function StartDump(Offset AS DWord,DumpSize AS DWord,FileName AS BytePtr) AS Byte
+		if DumpInfo.hFile<>0 Then CloseHandle(DumpInfo.hFile)
+		FillMemory(VarPtr(DumpInfo),sizeof(THREAD_VALUES),0)
+		DumpInfo.hFile=OpenFile(FileName,GENERIC_WRITE)
+		if DumpInfo.hFile=-1 Then 
+			ErrMes(hDump,"ファイルに書き込めませんでした。",FileName,0)
+			StartDump=FALSE
+		Endif
+		DumpInfo.Address=Offset
+		DumpInfo.Size=DumpSize
+		DumpInfo.CallBack=AddressOf(DumpCallback)
+		DumpInfo.ExitFlag=FALSE
+
+		hTh=CreateThread(ByVal NULL,0,AddressOf(DumpThread),VarPtr(DumpInfo),0,VarPtr(dwThID))
+
+		StartDump=TRUE
+	EndFunction
+
+	Sub Cancel() 
+		Dim ExitCode AS DWord
+		DBM("Canceling. Wait...")
+		Do
+			DumpInfo.ExitFlag=TRUE
+			if GetExitCodeThread(hTh,ExitCode)<>0 Then
+				Print "CANCEL : ExitThread"
+				Exitdo
+			endif
+		Loop
+	EndSub
+End Class
+
+Sub SetCheck(hWnd AS HWND,mode as BOOL)
+	if mode=TRUE Then
+		SendMessage(hWnd,BM_SETCHECK,BST_CHECKED,NULL)
+	Else
+		SendMessage(hWnd,BM_SETCHECK,BST_UNCHECKED,NULL)
+	endif
+EndSub
+
+Function GetCheck(hWnd AS HWND) AS BOOL
+	GetCheck=SendMessage(hWnd,BM_GETCHECK,0,0)
+	if GetCheck=BST_CHECKED Then
+		GetCheck=TRUE
+	Else
+		GetCheck=FALSE
+	endif
+EndFunction
+
+Sub Dump_Create(ByRef CreateStruct As CREATESTRUCT)
+	SetCheck(DWnd(RadioButton1),TRUE)
+	SendMessage(DWnd(ComboBox1),CB_ADDSTRING,0,"MB" As Long)	'0
+	SendMessage(DWnd(ComboBox1),CB_ADDSTRING,0,"KB" As Long)	'0
+	SendMessage(DWnd(ComboBox1),CB_ADDSTRING,0,"Byte" As Long)	'1
+	SendMessage(DWnd(ComboBox1),CB_ADDSTRING,0,"Mbit" As Long)	'2
+	SendMessage(DWnd(ComboBox1),CB_ADDSTRING,0,"Kbit" As Long)	'3
+	SendMessage(DWnd(ComboBox1),CB_ADDSTRING,0,"bit" As Long)
+	SendMessage(DWnd(ComboBox1),CB_SETCURSEL,3,0)
+
+End Sub
+
+Function WndText(hWnd AS HWND) AS Long
+	Dim buf as BytePtr
+	buf=calloc(GetWindowTextLength(hWnd)+5)
+	GetWindowText(hWnd,buf,GetWindowTextLength(hWnd)+1)
+	Dim i as Long,mode as Long
+	Do
+		if buf[i]=&H20 Then 
+			i++
+			Continue'Skip Space
+		Elseif buf[i]=&H30 Then	'0'
+			if buf[i+1]=&H78 Or buf[i+1]=&H58 Then	'x'
+				'16進決定,0xを&Hに変更
+				buf[i]=&H26:	buf[i+1]=&H48
+			endif
+		endif
+		ExitDo		
+	Loop
+	GetDlgItemHex=Val(buf+i) AS Long
+	free(buf)
+EndFunction
+
+
+Sub Dump_CommandButton4_Click()
+	Print "Custum:";GetDlgItemHex(DWnd(EditBox5))
+	Print "Bits";SendMessage(DWnd(ComboBox1),CB_GETCURSEL ,0,0)
+	Dim Size AS DWord
+	Dim In AS DWord
+	In=GetDlgItemHex(DWnd(EditBox5))
+	Select Case SendMessage(DWnd(ComboBox1),CB_GETCURSEL ,0,0)
+		Case 0: Size=In*1024*1024		:Print "MB"
+		Case 1: Size=In*1024			:Print "KB"
+		Case 2: Size=In					:Print "Byte"
+		Case 3: Size=In*(1024*1024)/8	:Print "Mbit"
+		Case 4: Size=In*(1024)/8		:Print "Kbit"
+		Case 5: Size=In/8				:Print "bit"
+	EndSelect
+	Print Size;"Byte"
+	Print
+	Print "Manual : offset = 0x";Hex$(GetDlgItemHex(DWnd(EditBox2)));ex"\n\tsize =";GetDlgItemHex(DWnd(EditBox3))
+End Sub
