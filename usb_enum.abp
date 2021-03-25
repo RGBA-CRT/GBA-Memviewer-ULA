@@ -1,0 +1,80 @@
+
+Sub ParseUsbDeviceId(deviceId AS BytePtr,device_id_len As Long, vid As *Word, pid AS *Word)
+	Dim i as long
+	For i=0 to device_id_len
+		if deviceId[i]=GetByte("V") Then
+			if win_strncmpi(deviceId+i,"VID_",4) Then
+				printf(ex"[%s]\n",deviceId+i+4)
+				rcAsciiToInt(deviceId+i+4, vid,16)
+			endif
+		Elseif deviceId[i]=GetByte("P") Then
+
+			if win_strncmpi(deviceId+i,"PID_",4) Then
+				rcAsciiToInt(deviceId+i+4, pid,16)
+			endif
+		End If
+	Next
+End Sub
+
+
+
+Function EnumUsbDevices(setupapi AS *SetupApiWrapper, callback AS ESP_CALLBACK_T, userdata As VoidPtr) As BOOL
+	EnumUsbDevices=FALSE
+	Dim classGUID[0] As GUID
+	Dim DeviceInfoData AS SP_DEVINFO_DATA
+	Dim dwReqSize AS DWord
+
+	'個々のコードはWin2000以降専用
+
+	'Setup API の PortsのGUIDを取得 
+	DeviceInfoData.cbSize = sizeof(SP_DEVINFO_DATA)
+	if setupapi->SetupDiClassGuidsFromName("USBDevice", classGUID, 1,VarPtr(dwReqSize)) = FALSE Then
+		Print "GetClass Error"
+	Endif
+
+	Dim hDevInfoSet AS HANDLE
+	hDevInfoSet = setupapi->SetupDiGetClassDevs(VarPtr(classGUID[0]), NULL, NULL, DIGCF_PRESENT OR DIGCF_PROFILE)
+	if hDevInfoSet = INVALID_HANDLE_VALUE Then ExitFunction
+	
+'	printf(ex"%s\n",GuidToText_calloc(classGUID))
+
+	'レジストリrエントリを走査
+	Dim EnumDeviceIndex AS Long
+
+	Do
+		if setupapi->SetupDiEnumDeviceInfo(hDevInfoSet, EnumDeviceIndex, VarPtr(DeviceInfoData)) = FALSE Then ExitDo
+
+		Dim regFriendlyName[MAX_PATH] AS Byte
+		Dim dwPropType As DWord
+
+		'DevInfoDataから"USB-SERIAL CH340 (COM3)"などのフレンドリーネームを取得
+		If setupapi->SetupDiGetDeviceRegistryProperty(
+			hDevInfoSet,
+			VarPtr(DeviceInfoData),
+			SPDRP_DEVICEDESC,
+			VarPtr(dwPropType),
+			regFriendlyName,
+			MAX_PATH,
+			VarPtr(dwReqSize)
+		) = FALSE Then ExitFunction
+
+		Dim portName[MAX_PATH] AS Byte
+		If setupapi->SetupDiGetDeviceRegistryProperty(
+			hDevInfoSet,
+			VarPtr(DeviceInfoData),
+			SPDRP_HARDWAREID,
+			VarPtr(dwPropType),
+			portName,
+			MAX_PATH,
+			VarPtr(dwReqSize)
+		) = FALSE Then ExitFunction
+
+
+		' Portsで列挙されるLPTを排除する
+			callback(userdata, portName, regFriendlyName)
+
+		EnumDeviceIndex++
+	Loop
+
+	EnumUsbDevices=TRUE
+EndFunction
